@@ -9,12 +9,11 @@ BASE_URL     = "https://newsapi.org/v2"
 
 
 def fetch_articles(endpoint: str, params: dict) -> tuple[list, str | None]:
-    """Return (articles, error_message)."""
+    """Fetch a single batch. Return (articles, error_message)."""
     if not NEWS_API_KEY:
         return [], "NEWS_API_KEY is not configured. Add it in the Secrets panel."
     try:
-        params["apiKey"]   = NEWS_API_KEY
-        params["pageSize"] = 9
+        params["apiKey"] = NEWS_API_KEY
         resp = requests.get(f"{BASE_URL}/{endpoint}", params=params, timeout=8)
         data = resp.json()
         if data.get("status") != "ok":
@@ -24,13 +23,50 @@ def fetch_articles(endpoint: str, params: dict) -> tuple[list, str | None]:
         return [], f"Network error: {exc}"
 
 
+def get_news() -> tuple[list, str | None]:
+    """Fetch Kenya + US general headlines, merge, deduplicate by title."""
+    kenya_articles,  err1 = fetch_articles(
+        "top-headlines", {"country": "ke", "pageSize": 10}
+    )
+    global_articles, err2 = fetch_articles(
+        "top-headlines", {"country": "us", "category": "general", "pageSize": 10}
+    )
+
+    # Surface the first real error only if both calls failed
+    error = None
+    if err1 and err2:
+        error = err1
+
+    # Merge and remove duplicates by normalised title
+    seen   = set()
+    merged = []
+    for article in kenya_articles + global_articles:
+        key = (article.get("title") or "").strip().lower()
+        if key and key not in seen:
+            seen.add(key)
+            merged.append(article)
+
+    return merged, error
+
+
 @app.route("/")
 def index():
-    articles, error = fetch_articles("top-headlines", {"language": "en"})
+    articles, error = get_news()
     return render_template("index.html",
                            articles=articles,
                            error=error,
                            active_category="Top Headlines")
+
+
+@app.route("/category/kenya")
+def category_kenya():
+    articles, error = fetch_articles(
+        "top-headlines", {"country": "ke", "pageSize": 10}
+    )
+    return render_template("index.html",
+                           articles=articles,
+                           error=error,
+                           active_category="Kenya")
 
 
 @app.route("/kenya")
