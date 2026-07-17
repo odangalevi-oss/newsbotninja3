@@ -6,7 +6,7 @@ from functools import wraps
 
 from flask import (
     Flask, render_template, request, jsonify,
-    redirect, url_for, flash
+    redirect, url_for, flash, send_from_directory
 )
 from flask_login import (
     LoginManager, UserMixin,
@@ -406,6 +406,17 @@ def api_weather():
         return jsonify({"temp": c["temp_C"], "desc": desc, "icon": icon, "city": city})
     except Exception:
         return jsonify({"error": "unavailable"})
+
+
+# ── Demo download ─────────────────────────────────────────────────────────────
+@app.route("/download-demo")
+def download_demo():
+    return send_from_directory(
+        os.path.join(os.path.dirname(__file__), "static"),
+        "newsbotninja_demo.zip",
+        as_attachment=True,
+        download_name="newsbotninja_demo.zip",
+    )
 
 
 # ── Entry point ───────────────────────────────────────────────────────────────

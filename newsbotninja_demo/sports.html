@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en">
+<head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>Sports · Newsbotninja 🥷</title><link rel="stylesheet" href="style.css"/></head>
+<body>
+<nav class="navbar"><div class="container navbar__inner">
+  <a href="index.html" class="navbar__logo">Newsbotninja 🥷</a>
+  <div class="navbar__categories">
+    <a href="index.html" class="category-link">Top Headlines</a>
+    <a href="kenya.html" class="category-link">Kenya</a>
+    <a href="technology.html" class="category-link">Technology</a>
+    <a href="business.html" class="category-link">Business</a>
+    <a href="sports.html" class="category-link active">Sports</a>
+    <a href="health.html" class="category-link">Health</a>
+    <a href="entertainment.html" class="category-link">Entertainment</a>
+    <a href="world.html" class="category-link">World</a>
+    <a href="science.html" class="category-link">Science</a>
+  </div>
+  <div class="navbar__auth" style="margin-left:auto">
+    <a href="admin.html" class="auth-link auth-link--admin">⚙️ Admin</a>
+    <span class="auth-user">👤 odanga</span>
+    <a href="login.html" class="auth-link auth-link--logout">Logout</a>
+  </div>
+  <button class="theme-toggle" id="themeToggle">🌙</button>
+</div></nav>
+
+<main><div class="container">
+  <div class="page-header"><h1 class="page-heading">⚽ Sports</h1><span class="last-updated">Updated just now</span></div>
+  <div class="news-grid">
+
+    <article class="card">
+      <img class="card__image" src="https://picsum.photos/seed/spt1/800/400" alt="" onerror="this.style.display='none'"/>
+      <div class="card__body">
+        <div class="card__meta"><span class="card__source">BBC Sport</span><span class="card__date">2026-07-17</span></div>
+        <h2 class="card__title">Premier League: Arsenal top table after stunning comeback win over Man City</h2>
+        <p class="card__description">The Gunners came from two goals down to beat Manchester City 3–2 in a pulsating clash at the Emirates, lifting them to the summit with six games remaining.</p>
+        <a class="card__btn" href="#" onclick="return false">Read More →</a>
+      </div>
+    </article>
+
+    <article class="card">
+      <img class="card__image" src="https://picsum.photos/seed/spt2/800/400" alt="" onerror="this.style.display='none'"/>
+      <div class="card__body">
+        <div class="card__meta"><span class="card__source">The Star</span><span class="card__date">2026-07-17</span></div>
+        <h2 class="card__title">Kipchoge breaks his own marathon world record in Berlin with 1:56:44</h2>
+        <p class="card__description">Eliud Kipchoge has rewritten the record books again, completing the Berlin Marathon in 1 hour 56 minutes and 44 seconds to claim his fourth world record and inspire a generation.</p>
+        <a class="card__btn" href="#" onclick="return false">Read More →</a>
+      </div>
+    </article>
+
+    <article class="card">
+      <img class="card__image" src="https://picsum.photos/seed/spt3/800/400" alt="" onerror="this.style.display='none'"/>
+      <div class="card__body">
+        <div class="card__meta"><span class="card__source">ESPN</span><span class="card__date">2026-07-16</span></div>
+        <h2 class="card__title">Harambee Stars qualify for Africa Cup of Nations finals for first time</h2>
+        <p class="card__description">Kenya's national football team Harambee Stars secured AFCON qualification after a dramatic 2–1 victory over Uganda in Nairobi, ending a 24-year absence from the tournament.</p>
+        <a class="card__btn" href="#" onclick="return false">Read More →</a>
+      </div>
+    </article>
+
+    <article class="card">
+      <img class="card__image" src="https://picsum.photos/seed/spt4/800/400" alt="" onerror="this.style.display='none'"/>
+      <div class="card__body">
+        <div class="card__meta"><span class="card__source">ATP Tour</span><span class="card__date">2026-07-16</span></div>
+        <h2 class="card__title">Djokovic claims record 25th Grand Slam title at Wimbledon aged 39</h2>
+        <p class="card__description">Novak Djokovic defied age and injury to claim his 25th Grand Slam title at Wimbledon, defeating Carlos Alcaraz 7–6, 4–6, 7–5, 6–3 in an all-time classic final.</p>
+        <a class="card__btn" href="#" onclick="return false">Read More →</a>
+      </div>
+    </article>
+
+    <article class="card">
+      <img class="card__image" src="https://picsum.photos/seed/spt5/800/400" alt="" onerror="this.style.display='none'"/>
+      <div class="card__body">
+        <div class="card__meta"><span class="card__source">Formula 1</span><span class="card__date">2026-07-15</span></div>
+        <h2 class="card__title">Lewis Hamilton wins first Ferrari race at Monaco Grand Prix</h2>
+        <p class="card__description">Lewis Hamilton secured his first victory wearing Ferrari red at a rain-soaked Monaco Grand Prix, his emotional win coming in his 12th season in Formula 1's most glamorous race.</p>
+        <a class="card__btn" href="#" onclick="return false">Read More →</a>
+      </div>
+    </article>
+
+    <article class="card">
+      <img class="card__image" src="https://picsum.photos/seed/spt6/800/400" alt="" onerror="this.style.display='none'"/>
+      <div class="card__body">
+        <div class="card__meta"><span class="card__source">Nation Sports</span><span class="card__date">2026-07-15</span></div>
+        <h2 class="card__title">Gor Mahia crowned KPL champions for record 21st time</h2>
+        <p class="card__description">Gor Mahia FC were crowned Kenyan Premier League champions for a record 21st time after AFC Leopards drew 0–0 with Tusker FC, mathematically securing the title with two games to spare.</p>
+        <a class="card__btn" href="#" onclick="return false">Read More →</a>
+      </div>
+    </article>
+
+  </div>
+  <div class="load-more-wrap"><button class="load-more-btn" onclick="showToast('🥷 Loading more…')">Load More Stories</button></div>
+</div></main>
+
+<footer><span class="footer__brand">Newsbotninja 🥷</span> &nbsp;·&nbsp; created by <span class="footer__author">Odanga</span></footer>
+<div class="toast" id="toast"></div>
+<script>
+const html=document.documentElement,btn=document.getElementById('themeToggle');
+if(localStorage.getItem('theme')==='light'){html.classList.add('light');btn.textContent='☀️';}
+btn.addEventListener('click',()=>{const l=html.classList.toggle('light');btn.textContent=l?'☀️':'🌙';localStorage.setItem('theme',l?'light':'dark');});
+function showToast(m){const t=document.getElementById('toast');t.textContent=m;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2500);}
+</script>
+</body></html>

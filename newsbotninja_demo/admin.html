@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>Admin Panel · Newsbotninja 🥷</title>
+<link rel="stylesheet" href="style.css"/>
+</head>
+<body>
+
+<nav class="navbar">
+  <div class="container navbar__inner">
+    <a href="index.html" class="navbar__logo">Newsbotninja 🥷</a>
+    <div class="navbar__categories">
+      <a href="index.html"         class="category-link">Top Headlines</a>
+      <a href="kenya.html"         class="category-link">Kenya</a>
+      <a href="technology.html"    class="category-link">Technology</a>
+      <a href="business.html"      class="category-link">Business</a>
+      <a href="sports.html"        class="category-link">Sports</a>
+      <a href="health.html"        class="category-link">Health</a>
+      <a href="entertainment.html" class="category-link">Entertainment</a>
+      <a href="world.html"         class="category-link">World</a>
+      <a href="science.html"       class="category-link">Science</a>
+    </div>
+    <div class="navbar__auth" style="margin-left:auto">
+      <a href="admin.html"  class="auth-link auth-link--admin">⚙️ Admin</a>
+      <span class="auth-user">👤 odanga</span>
+      <a href="login.html"  class="auth-link auth-link--logout">Logout</a>
+    </div>
+    <button class="theme-toggle" id="themeToggle">🌙</button>
+  </div>
+</nav>
+
+<main><div class="container">
+  <div class="admin-header">
+    <div>
+      <h1 class="page-heading">⚙️ Admin Panel</h1>
+      <p class="admin-subtitle">Manage Newsbotninja users</p>
+    </div>
+    <a href="index.html" class="admin-back-btn">← Back to News</a>
+  </div>
+
+  <div class="admin-stats">
+    <div class="stat-card"><span class="stat-value">4</span><span class="stat-label">Total Users</span></div>
+    <div class="stat-card"><span class="stat-value">1</span><span class="stat-label">Admins</span></div>
+    <div class="stat-card"><span class="stat-value">3</span><span class="stat-label">Regular Users</span></div>
+  </div>
+
+  <div class="admin-table-wrap">
+    <table class="admin-table">
+      <thead><tr><th>#</th><th>Username</th><th>Email</th><th>Role</th><th>Joined</th><th>Action</th></tr></thead>
+      <tbody>
+        <tr class="admin-row">
+          <td class="td-id">1</td>
+          <td class="td-username">odanga <span class="badge badge--admin">Admin</span></td>
+          <td class="td-email">odangalevi@gmail.com</td>
+          <td><span class="badge badge--admin">Admin</span></td>
+          <td class="td-date">2026-07-17</td>
+          <td><span class="self-label">You</span></td>
+        </tr>
+        <tr>
+          <td class="td-id">2</td>
+          <td class="td-username">wanjiku_k</td>
+          <td class="td-email">wanjiku@example.com</td>
+          <td><span class="badge badge--user">User</span></td>
+          <td class="td-date">2026-07-17</td>
+          <td><button class="delete-btn" onclick="showToast('🗑 User deleted.')">🗑 Delete</button></td>
+        </tr>
+        <tr>
+          <td class="td-id">3</td>
+          <td class="td-username">brian254</td>
+          <td class="td-email">brian@example.com</td>
+          <td><span class="badge badge--user">User</span></td>
+          <td class="td-date">2026-07-17</td>
+          <td><button class="delete-btn" onclick="showToast('🗑 User deleted.')">🗑 Delete</button></td>
+        </tr>
+        <tr>
+          <td class="td-id">4</td>
+          <td class="td-username">amina_m</td>
+          <td class="td-email">amina@example.com</td>
+          <td><span class="badge badge--user">User</span></td>
+          <td class="td-date">2026-07-17</td>
+          <td><button class="delete-btn" onclick="showToast('🗑 User deleted.')">🗑 Delete</button></td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</div></main>
+
+<footer><span class="footer__brand">Newsbotninja 🥷</span> &nbsp;·&nbsp; created by <span class="footer__author">Odanga</span></footer>
+<div class="toast" id="toast"></div>
+<script>
+const html=document.documentElement,btn=document.getElementById('themeToggle');
+if(localStorage.getItem('theme')==='light'){html.classList.add('light');btn.textContent='☀️';}
+btn.addEventListener('click',()=>{const l=html.classList.toggle('light');btn.textContent=l?'☀️':'🌙';localStorage.setItem('theme',l?'light':'dark');});
+function showToast(m){const t=document.getElementById('toast');t.textContent=m;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2500);}
+</script>
+</body>
+</html>

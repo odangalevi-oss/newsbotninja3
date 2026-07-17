@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en">
+<head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>World · Newsbotninja 🥷</title><link rel="stylesheet" href="style.css"/></head>
+<body>
+<nav class="navbar"><div class="container navbar__inner">
+  <a href="index.html" class="navbar__logo">Newsbotninja 🥷</a>
+  <div class="navbar__categories">
+    <a href="index.html" class="category-link">Top Headlines</a>
+    <a href="kenya.html" class="category-link">Kenya</a>
+    <a href="technology.html" class="category-link">Technology</a>
+    <a href="business.html" class="category-link">Business</a>
+    <a href="sports.html" class="category-link">Sports</a>
+    <a href="health.html" class="category-link">Health</a>
+    <a href="entertainment.html" class="category-link">Entertainment</a>
+    <a href="world.html" class="category-link active">World</a>
+    <a href="science.html" class="category-link">Science</a>
+  </div>
+  <div class="navbar__auth" style="margin-left:auto">
+    <a href="admin.html" class="auth-link auth-link--admin">⚙️ Admin</a>
+    <span class="auth-user">👤 odanga</span>
+    <a href="login.html" class="auth-link auth-link--logout">Logout</a>
+  </div>
+  <button class="theme-toggle" id="themeToggle">🌙</button>
+</div></nav>
+
+<main><div class="container">
+  <div class="page-header"><h1 class="page-heading">🌐 World</h1><span class="last-updated">Updated just now</span></div>
+  <div class="news-grid">
+
+    <article class="card">
+      <img class="card__image" src="https://picsum.photos/seed/wld1/800/400" alt="" onerror="this.style.display='none'"/>
+      <div class="card__body">
+        <div class="card__meta"><span class="card__source">Reuters</span><span class="card__date">2026-07-17</span></div>
+        <h2 class="card__title">World leaders gather in Geneva for landmark climate summit</h2>
+        <p class="card__description">193 nations have convened in Geneva for the most ambitious climate summit in history, with pledges to cut carbon emissions by 65% before 2035 and end coal power in G20 nations by 2030.</p>
+        <a class="card__btn" href="#" onclick="return false">Read More →</a>
+      </div>
+    </article>
+
+    <article class="card">
+      <img class="card__image" src="https://picsum.photos/seed/wld2/800/400" alt="" onerror="this.style.display='none'"/>
+      <div class="card__body">
+        <div class="card__meta"><span class="card__source">AP</span><span class="card__date">2026-07-17</span></div>
+        <h2 class="card__title">UN Security Council adopts landmark resolution on AI warfare regulation</h2>
+        <p class="card__description">The United Nations Security Council has unanimously adopted a resolution banning autonomous lethal weapons systems and requiring human oversight in all AI-assisted military operations.</p>
+        <a class="card__btn" href="#" onclick="return false">Read More →</a>
+      </div>
+    </article>
+
+    <article class="card">
+      <img class="card__image" src="https://picsum.photos/seed/wld3/800/400" alt="" onerror="this.style.display='none'"/>
+      <div class="card__body">
+        <div class="card__meta"><span class="card__source">BBC World</span><span class="card__date">2026-07-16</span></div>
+        <h2 class="card__title">India overtakes China as world's largest economy by GDP</h2>
+        <p class="card__description">International Monetary Fund data confirms India's GDP has surpassed China's in nominal dollar terms for the first time, marking a historic shift in global economic power to South Asia.</p>
+        <a class="card__btn" href="#" onclick="return false">Read More →</a>
+      </div>
+    </article>
+
+    <article class="card">
+      <img class="card__image" src="https://picsum.photos/seed/wld4/800/400" alt="" onerror="this.style.display='none'"/>
+      <div class="card__body">
+        <div class="card__meta"><span class="card__source">Al Jazeera</span><span class="card__date">2026-07-16</span></div>
+        <h2 class="card__title">African Union elects first female chairperson in historic vote</h2>
+        <p class="card__description">The African Union has elected Dr Amina Mohammed of Nigeria as its first female chairperson in its 24-year history, pledging to prioritise intra-African trade and climate adaptation.</p>
+        <a class="card__btn" href="#" onclick="return false">Read More →</a>
+      </div>
+    </article>
+
+    <article class="card">
+      <img class="card__image" src="https://picsum.photos/seed/wld5/800/400" alt="" onerror="this.style.display='none'"/>
+      <div class="card__body">
+        <div class="card__meta"><span class="card__source">Le Monde</span><span class="card__date">2026-07-15</span></div>
+        <h2 class="card__title">France announces €200B green hydrogen investment to replace fossil fuels</h2>
+        <p class="card__description">The French government has unveiled Europe's largest ever green energy programme, investing €200 billion in green hydrogen infrastructure over ten years to power industry, transport and heating.</p>
+        <a class="card__btn" href="#" onclick="return false">Read More →</a>
+      </div>
+    </article>
+
+    <article class="card">
+      <img class="card__image" src="https://picsum.photos/seed/wld6/800/400" alt="" onerror="this.style.display='none'"/>
+      <div class="card__body">
+        <div class="card__meta"><span class="card__source">DW</span><span class="card__date">2026-07-15</span></div>
+        <h2 class="card__title">Brazil wins 2026 FIFA World Cup on home soil in penalty shootout</h2>
+        <p class="card__description">Brazil claimed their sixth FIFA World Cup title in an electric final against France in Rio de Janeiro, winning 4–3 on penalties after a 1–1 draw to send the nation into delirium.</p>
+        <a class="card__btn" href="#" onclick="return false">Read More →</a>
+      </div>
+    </article>
+
+  </div>
+  <div class="load-more-wrap"><button class="load-more-btn" onclick="showToast('🥷 Loading more…')">Load More Stories</button></div>
+</div></main>
+
+<footer><span class="footer__brand">Newsbotninja 🥷</span> &nbsp;·&nbsp; created by <span class="footer__author">Odanga</span></footer>
+<div class="toast" id="toast"></div>
+<script>
+const html=document.documentElement,btn=document.getElementById('themeToggle');
+if(localStorage.getItem('theme')==='light'){html.classList.add('light');btn.textContent='☀️';}
+btn.addEventListener('click',()=>{const l=html.classList.toggle('light');btn.textContent=l?'☀️':'🌙';localStorage.setItem('theme',l?'light':'dark');});
+function showToast(m){const t=document.getElementById('toast');t.textContent=m;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2500);}
+</script>
+</body></html>

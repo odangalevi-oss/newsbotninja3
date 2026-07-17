@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en">
+<head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>Science · Newsbotninja 🥷</title><link rel="stylesheet" href="style.css"/></head>
+<body>
+<nav class="navbar"><div class="container navbar__inner">
+  <a href="index.html" class="navbar__logo">Newsbotninja 🥷</a>
+  <div class="navbar__categories">
+    <a href="index.html" class="category-link">Top Headlines</a>
+    <a href="kenya.html" class="category-link">Kenya</a>
+    <a href="technology.html" class="category-link">Technology</a>
+    <a href="business.html" class="category-link">Business</a>
+    <a href="sports.html" class="category-link">Sports</a>
+    <a href="health.html" class="category-link">Health</a>
+    <a href="entertainment.html" class="category-link">Entertainment</a>
+    <a href="world.html" class="category-link">World</a>
+    <a href="science.html" class="category-link active">Science</a>
+  </div>
+  <div class="navbar__auth" style="margin-left:auto">
+    <a href="admin.html" class="auth-link auth-link--admin">⚙️ Admin</a>
+    <span class="auth-user">👤 odanga</span>
+    <a href="login.html" class="auth-link auth-link--logout">Logout</a>
+  </div>
+  <button class="theme-toggle" id="themeToggle">🌙</button>
+</div></nav>
+
+<main><div class="container">
+  <div class="page-header"><h1 class="page-heading">🔬 Science</h1><span class="last-updated">Updated just now</span></div>
+  <div class="news-grid">
+
+    <article class="card">
+      <img class="card__image" src="https://picsum.photos/seed/sci1/800/400" alt="" onerror="this.style.display='none'"/>
+      <div class="card__body">
+        <div class="card__meta"><span class="card__source">Nature</span><span class="card__date">2026-07-17</span></div>
+        <h2 class="card__title">James Webb telescope captures clearest ever image of exoplanet atmosphere</h2>
+        <p class="card__description">NASA's James Webb Space Telescope has produced the most detailed spectroscopic analysis of an Earth-like exoplanet's atmosphere, detecting water vapour and carbon dioxide for the first time.</p>
+        <a class="card__btn" href="#" onclick="return false">Read More →</a>
+      </div>
+    </article>
+
+    <article class="card">
+      <img class="card__image" src="https://picsum.photos/seed/sci2/800/400" alt="" onerror="this.style.display='none'"/>
+      <div class="card__body">
+        <div class="card__meta"><span class="card__source">Science</span><span class="card__date">2026-07-17</span></div>
+        <h2 class="card__title">Scientists achieve nuclear fusion net energy gain for 50th consecutive day</h2>
+        <p class="card__description">The ITER facility in France has maintained a net positive energy fusion reaction for 50 consecutive days, marking the longest sustained fusion plasma event in history and heralding commercial viability.</p>
+        <a class="card__btn" href="#" onclick="return false">Read More →</a>
+      </div>
+    </article>
+
+    <article class="card">
+      <img class="card__image" src="https://picsum.photos/seed/sci3/800/400" alt="" onerror="this.style.display='none'"/>
+      <div class="card__body">
+        <div class="card__meta"><span class="card__source">New Scientist</span><span class="card__date">2026-07-16</span></div>
+        <h2 class="card__title">Scientists discover new malaria-resistant mosquito strain in Kenya</h2>
+        <p class="card__description">Researchers at the KEMRI-Wellcome Trust Research Programme in Kilifi have identified a naturally occurring malaria-resistant Anopheles mosquito variant that blocks parasite transmission entirely.</p>
+        <a class="card__btn" href="#" onclick="return false">Read More →</a>
+      </div>
+    </article>
+
+    <article class="card">
+      <img class="card__image" src="https://picsum.photos/seed/sci4/800/400" alt="" onerror="this.style.display='none'"/>
+      <div class="card__body">
+        <div class="card__meta"><span class="card__source">Scientific American</span><span class="card__date">2026-07-16</span></div>
+        <h2 class="card__title">Room-temperature superconductor confirmed by three independent labs</h2>
+        <p class="card__description">A hydrogen-rich compound that superconducts at room temperature and atmospheric pressure has been independently verified by research teams in the US, Germany and Japan, ending decades of controversy.</p>
+        <a class="card__btn" href="#" onclick="return false">Read More →</a>
+      </div>
+    </article>
+
+    <article class="card">
+      <img class="card__image" src="https://picsum.photos/seed/sci5/800/400" alt="" onerror="this.style.display='none'"/>
+      <div class="card__body">
+        <div class="card__meta"><span class="card__source">ESA</span><span class="card__date">2026-07-15</span></div>
+        <h2 class="card__title">ESA Mars probe discovers liquid water reservoir beneath Hellas Planitia</h2>
+        <p class="card__description">Europe's ExoMars radar has confirmed the existence of a 300km-wide liquid water reservoir beneath the Martian surface, dramatically raising the probability of extant microbial life on Mars.</p>
+        <a class="card__btn" href="#" onclick="return false">Read More →</a>
+      </div>
+    </article>
+
+    <article class="card">
+      <img class="card__image" src="https://picsum.photos/seed/sci6/800/400" alt="" onerror="this.style.display='none'"/>
+      <div class="card__body">
+        <div class="card__meta"><span class="card__source">PNAS</span><span class="card__date">2026-07-15</span></div>
+        <h2 class="card__title">Great Rift Valley yields oldest Homo sapiens fossils ever found — 380,000 years old</h2>
+        <p class="card__description">Palaeontologists excavating Kenya's Tugen Hills have unearthed Homo sapiens fossils dated to 380,000 years old — pushing back our species' origins by 80,000 years and cementing Africa's role in human evolution.</p>
+        <a class="card__btn" href="#" onclick="return false">Read More →</a>
+      </div>
+    </article>
+
+  </div>
+  <div class="load-more-wrap"><button class="load-more-btn" onclick="showToast('🥷 Loading more…')">Load More Stories</button></div>
+</div></main>
+
+<footer><span class="footer__brand">Newsbotninja 🥷</span> &nbsp;·&nbsp; created by <span class="footer__author">Odanga</span></footer>
+<div class="toast" id="toast"></div>
+<script>
+const html=document.documentElement,btn=document.getElementById('themeToggle');
+if(localStorage.getItem('theme')==='light'){html.classList.add('light');btn.textContent='☀️';}
+btn.addEventListener('click',()=>{const l=html.classList.toggle('light');btn.textContent=l?'☀️':'🌙';localStorage.setItem('theme',l?'light':'dark');});
+function showToast(m){const t=document.getElementById('toast');t.textContent=m;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2500);}
+</script>
+</body></html>
