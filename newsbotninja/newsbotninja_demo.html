@@ -1,0 +1,605 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>Newsbotninja 🥷 — Demo</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
+<style>
+/* ── CSS Variables ── */
+:root{--bg-primary:#0a0f1e;--bg-secondary:#111827;--bg-card:#1a2236;--bg-input:#1e2d45;--border:#1e3a5f;--text-primary:#f1f5f9;--text-secondary:#94a3b8;--text-muted:#64748b;--accent:#14b8a6;--accent-hover:#0d9488;--accent-light:rgba(20,184,166,.12);--accent-text:#0a0f1e;--shadow-card:0 4px 24px rgba(0,0,0,.45);--shadow-hover:0 12px 40px rgba(20,184,166,.18);--shadow-nav:0 2px 20px rgba(0,0,0,.6);--radius-sm:8px;--radius-md:14px;--radius-lg:20px;--radius-pill:999px;--transition:.2s ease}
+.light{--bg-primary:#f0f4f8;--bg-secondary:#fff;--bg-card:#fff;--bg-input:#e8f0fe;--border:#cbd5e1;--text-primary:#0f172a;--text-secondary:#475569;--text-muted:#94a3b8;--accent:#14b8a6;--accent-hover:#0d9488;--accent-light:rgba(20,184,166,.1);--accent-text:#fff;--shadow-card:0 2px 16px rgba(0,0,0,.08);--shadow-hover:0 10px 32px rgba(20,184,166,.2);--shadow-nav:0 2px 12px rgba(0,0,0,.1)}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+body{font-family:'Inter',system-ui,sans-serif;background-color:var(--bg-primary);color:var(--text-primary);min-height:100vh;display:flex;flex-direction:column;transition:background-color .3s,color .3s;line-height:1.6}
+a{color:inherit;text-decoration:none}
+img{display:block;max-width:100%}
+button{cursor:pointer;border:none;background:none;font-family:inherit}
+.container{width:100%;max-width:1200px;margin-inline:auto;padding-inline:16px}
+
+/* ── Navbar ── */
+.navbar{position:sticky;top:0;z-index:100;background-color:var(--bg-secondary);border-bottom:1px solid var(--border);box-shadow:var(--shadow-nav);transition:background-color .3s,box-shadow .3s}
+.navbar__inner{display:flex;align-items:center;gap:12px;padding-block:14px;flex-wrap:wrap}
+.navbar__logo{font-size:1.35rem;font-weight:800;color:var(--accent);letter-spacing:-.02em;white-space:nowrap;flex-shrink:0}
+.navbar__categories{display:flex;gap:4px;flex-wrap:wrap;flex:1;overflow-x:auto}
+.category-link{padding:6px 12px;border-radius:var(--radius-pill);font-size:.8rem;font-weight:500;color:var(--text-secondary);transition:background-color var(--transition),color var(--transition);white-space:nowrap;cursor:pointer}
+.category-link:hover{background-color:var(--accent-light);color:var(--accent)}
+.category-link.active{background-color:var(--accent);color:var(--accent-text);font-weight:600}
+.navbar__search{display:flex;align-items:center;flex-shrink:0}
+.search-input{width:160px;padding:7px 12px;border-radius:var(--radius-sm) 0 0 var(--radius-sm);border:1px solid var(--border);border-right:none;background-color:var(--bg-input);color:var(--text-primary);font-size:.82rem;font-family:inherit;outline:none;transition:border-color var(--transition)}
+.search-input::placeholder{color:var(--text-muted)}
+.search-input:focus{border-color:var(--accent)}
+.search-btn{padding:7px 14px;border-radius:0 var(--radius-sm) var(--radius-sm) 0;background-color:var(--accent);color:var(--accent-text);font-size:.82rem;font-weight:600;font-family:inherit}
+.navbar__auth{display:flex;align-items:center;gap:8px;flex-shrink:0}
+.auth-user{font-size:.78rem;font-weight:600;color:var(--text-secondary);white-space:nowrap}
+.auth-link{padding:6px 12px;border-radius:var(--radius-pill);font-size:.78rem;font-weight:600;color:var(--text-secondary);transition:background-color var(--transition),color var(--transition);white-space:nowrap;cursor:pointer}
+.auth-link:hover{background-color:var(--accent-light);color:var(--accent)}
+.auth-link--register{background-color:var(--accent);color:var(--accent-text)}
+.auth-link--register:hover{background-color:var(--accent-hover);color:var(--accent-text)}
+.auth-link--logout{color:#ef4444}
+.auth-link--logout:hover{background-color:rgba(239,68,68,.1);color:#ef4444}
+.auth-link--admin{color:var(--accent)}
+.theme-toggle{width:36px;height:36px;border-radius:var(--radius-pill);display:flex;align-items:center;justify-content:center;font-size:1rem;background-color:var(--accent-light);color:var(--accent);flex-shrink:0;transition:background-color var(--transition),transform var(--transition)}
+.theme-toggle:hover{background-color:var(--accent);color:var(--accent-text);transform:rotate(20deg)}
+
+/* ── Weather widget ── */
+.weather-widget{display:flex;align-items:center;gap:5px;padding:5px 12px;border-radius:var(--radius-pill);background-color:var(--accent-light);border:1px solid rgba(20,184,166,.2);white-space:nowrap;flex-shrink:0}
+.weather-icon{font-size:1rem}
+.weather-temp{font-size:.8rem;font-weight:700;color:var(--accent)}
+.weather-city{font-size:.72rem;color:var(--text-muted)}
+@media(max-width:767px){.weather-widget{display:none}}
+
+/* ── Ticker ── */
+.ticker-wrap{display:flex;align-items:center;background-color:var(--bg-secondary);border-bottom:1px solid var(--border);overflow:hidden;height:36px}
+.ticker-label{flex-shrink:0;padding:0 14px;font-size:.72rem;font-weight:700;color:#ef4444;border-right:1px solid var(--border);white-space:nowrap;height:100%;display:flex;align-items:center;letter-spacing:.04em;background-color:rgba(239,68,68,.08)}
+.ticker-track{flex:1;overflow:hidden;height:100%;display:flex;align-items:center}
+.ticker-content{display:inline-flex;align-items:center;white-space:nowrap;animation:ticker-scroll 50s linear infinite}
+.ticker-content:hover{animation-play-state:paused}
+.ticker-item{font-size:.8rem;font-weight:500;color:var(--text-secondary);padding:0 20px;cursor:default;transition:color var(--transition)}
+.ticker-item:hover{color:var(--accent)}
+.ticker-sep{color:var(--accent);font-size:.6rem;opacity:.6}
+@keyframes ticker-scroll{0%{transform:translateX(0)}100%{transform:translateX(-50%)}}
+
+/* ── Page header ── */
+main{flex:1;padding-block:32px}
+.page-header{display:flex;align-items:baseline;gap:16px;flex-wrap:wrap;margin-bottom:4px}
+.page-heading{font-size:1.75rem;font-weight:800;color:var(--accent);letter-spacing:-.02em}
+.last-updated{font-size:.78rem;color:var(--text-muted)}
+
+/* ── News grid & cards ── */
+.news-grid{display:grid;grid-template-columns:1fr;gap:24px;margin-top:24px}
+@media(min-width:640px){.news-grid{grid-template-columns:repeat(2,1fr)}}
+@media(min-width:1024px){.news-grid{grid-template-columns:repeat(3,1fr)}}
+.card{background-color:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius-lg);overflow:hidden;display:flex;flex-direction:column;box-shadow:var(--shadow-card);transition:transform var(--transition),box-shadow var(--transition),border-color var(--transition)}
+.card:hover{transform:translateY(-6px);box-shadow:var(--shadow-hover);border-color:var(--accent)}
+.card__image{width:100%;height:200px;object-fit:cover;flex-shrink:0}
+.card__image-placeholder{width:100%;height:200px;background-color:var(--bg-input);display:flex;align-items:center;justify-content:center;font-size:3rem;opacity:.25;flex-shrink:0}
+.card__body{padding:20px;display:flex;flex-direction:column;gap:10px;flex:1}
+.card__meta{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.card__source{display:inline-block;padding:3px 10px;border-radius:var(--radius-pill);background-color:var(--accent-light);color:var(--accent);font-size:.72rem;font-weight:600}
+.card__date{font-size:.72rem;color:var(--text-muted)}
+.card__title{font-size:.98rem;font-weight:700;color:var(--text-primary);line-height:1.4}
+.card__description{font-size:.85rem;color:var(--text-secondary);line-height:1.55;flex:1;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.card__btn{display:block;text-align:center;margin-top:4px;padding:9px 20px;border-radius:var(--radius-sm);background-color:var(--accent);color:var(--accent-text);font-size:.85rem;font-weight:600;transition:background-color var(--transition),transform var(--transition)}
+.card__btn:hover{background-color:var(--accent-hover);transform:scale(1.02)}
+
+/* ── Share bar ── */
+.share-bar{display:flex;gap:8px;margin-top:4px}
+.share-btn{display:flex;align-items:center;justify-content:center;width:32px;height:32px;border-radius:var(--radius-sm);background-color:var(--bg-input);border:1px solid var(--border);color:var(--text-muted);transition:background-color var(--transition),color var(--transition),border-color var(--transition),transform var(--transition);cursor:pointer;text-decoration:none}
+.share-btn svg{width:15px;height:15px}
+.share-btn:hover{transform:scale(1.12);border-color:var(--accent)}
+.share-btn--wa:hover{background-color:#25d36620;color:#25d366}
+.share-btn--tw:hover{background-color:rgba(20,184,166,.12);color:var(--accent)}
+.share-btn--copy:hover{background-color:var(--accent-light);color:var(--accent)}
+
+/* ── Load More ── */
+.load-more-wrap{display:flex;justify-content:center;margin-top:40px}
+.load-more-btn{padding:12px 36px;border-radius:var(--radius-pill);border:2px solid var(--accent);background-color:transparent;color:var(--accent);font-family:inherit;font-size:.9rem;font-weight:600;cursor:pointer;transition:background-color var(--transition),color var(--transition),transform var(--transition)}
+.load-more-btn:hover{background-color:var(--accent);color:var(--accent-text);transform:translateY(-2px)}
+
+/* ── Toast ── */
+.toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(20px);background-color:var(--bg-card);border:1px solid var(--border);color:var(--text-primary);padding:10px 24px;border-radius:var(--radius-pill);font-size:.875rem;font-weight:500;box-shadow:var(--shadow-card);opacity:0;pointer-events:none;transition:opacity .25s,transform .25s;z-index:999;white-space:nowrap}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+
+/* ── Footer ── */
+footer{background-color:var(--bg-secondary);border-top:1px solid var(--border);text-align:center;padding:20px 16px;font-size:.85rem;color:var(--text-muted)}
+footer .footer__brand{color:var(--accent);font-weight:700}
+footer .footer__author{color:var(--text-secondary)}
+
+/* ── Auth forms ── */
+.auth-wrap{display:flex;justify-content:center;align-items:flex-start;padding:60px 16px 80px}
+.auth-card{width:100%;max-width:440px;background-color:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius-lg);padding:40px 36px;box-shadow:var(--shadow-card)}
+.auth-header{text-align:center;margin-bottom:32px}
+.auth-logo{display:block;font-size:3rem;margin-bottom:12px;line-height:1}
+.auth-title{font-size:1.6rem;font-weight:800;color:var(--text-primary);letter-spacing:-.02em;margin-bottom:6px}
+.auth-subtitle{font-size:.875rem;color:var(--text-muted)}
+.auth-form{display:flex;flex-direction:column;gap:20px}
+.form-group{display:flex;flex-direction:column;gap:7px}
+.form-label{font-size:.8rem;font-weight:600;color:var(--text-secondary);letter-spacing:.02em;text-transform:uppercase}
+.form-input{padding:11px 16px;border-radius:var(--radius-sm);border:1px solid var(--border);background-color:var(--bg-input);color:var(--text-primary);font-size:.9rem;font-family:inherit;outline:none;transition:border-color var(--transition),box-shadow var(--transition)}
+.form-input::placeholder{color:var(--text-muted)}
+.form-input:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(20,184,166,.18)}
+.form-btn{margin-top:8px;padding:12px 24px;border-radius:var(--radius-sm);background-color:var(--accent);color:var(--accent-text);font-size:.95rem;font-weight:700;font-family:inherit;transition:background-color var(--transition),transform var(--transition);border:none;cursor:pointer}
+.form-btn:hover{background-color:var(--accent-hover);transform:translateY(-1px)}
+.auth-switch{margin-top:24px;text-align:center;font-size:.875rem;color:var(--text-muted)}
+.auth-switch a{color:var(--accent);font-weight:600;text-decoration:underline;cursor:pointer}
+
+/* ── Admin panel ── */
+.admin-header{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-top:40px;margin-bottom:28px}
+.admin-subtitle{font-size:.875rem;color:var(--text-muted);margin-top:4px}
+.admin-back-btn{padding:9px 20px;border-radius:var(--radius-pill);border:1px solid var(--border);background-color:var(--bg-input);color:var(--text-secondary);font-size:.85rem;font-weight:600;cursor:pointer;transition:border-color var(--transition),color var(--transition)}
+.admin-back-btn:hover{border-color:var(--accent);color:var(--accent)}
+.admin-stats{display:flex;gap:16px;flex-wrap:wrap;margin-bottom:28px}
+.stat-card{flex:1;min-width:120px;display:flex;flex-direction:column;align-items:center;padding:20px 16px;background-color:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius-md);box-shadow:var(--shadow-card)}
+.stat-value{font-size:2.4rem;font-weight:800;color:var(--accent);letter-spacing:-.03em;line-height:1}
+.stat-label{font-size:.75rem;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:.05em;margin-top:6px}
+.admin-table-wrap{background-color:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius-md);overflow:auto;box-shadow:var(--shadow-card);margin-bottom:60px}
+.admin-table{width:100%;border-collapse:collapse;font-size:.875rem}
+.admin-table th{padding:13px 16px;text-align:left;font-size:.7rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--text-muted);background-color:var(--bg-secondary);border-bottom:1px solid var(--border);white-space:nowrap}
+.admin-table td{padding:13px 16px;border-bottom:1px solid var(--border);color:var(--text-primary);vertical-align:middle}
+.admin-table tr:last-child td{border-bottom:none}
+.admin-table tr:hover td{background-color:var(--accent-light)}
+.admin-row td{background-color:rgba(20,184,166,.04)}
+.td-id{color:var(--text-muted);width:48px}
+.td-email{color:var(--text-secondary)}
+.td-date{color:var(--text-muted);white-space:nowrap}
+.td-username{font-weight:600}
+.badge{display:inline-block;padding:3px 9px;border-radius:var(--radius-pill);font-size:.68rem;font-weight:700;letter-spacing:.04em;text-transform:uppercase}
+.badge--admin{background-color:rgba(20,184,166,.15);color:var(--accent)}
+.badge--user{background-color:var(--bg-input);color:var(--text-muted)}
+.delete-btn{padding:6px 14px;border-radius:var(--radius-sm);background-color:rgba(239,68,68,.12);color:#ef4444;font-size:.78rem;font-weight:600;font-family:inherit;border:1px solid rgba(239,68,68,.2);cursor:pointer;transition:background-color var(--transition),transform var(--transition)}
+.delete-btn:hover{background-color:#ef4444;color:#fff;transform:scale(1.05)}
+.self-label{font-size:.75rem;color:var(--text-muted);font-style:italic}
+
+/* ── Demo view switcher (for presentation) ── */
+.demo-bar{background-color:rgba(20,184,166,.08);border-bottom:2px solid var(--accent);padding:10px 16px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;position:sticky;top:0;z-index:200}
+.demo-label{font-size:.72rem;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.08em;white-space:nowrap;flex-shrink:0}
+.demo-btns{display:flex;gap:6px;flex-wrap:wrap}
+.demo-btn{padding:5px 14px;border-radius:var(--radius-pill);font-size:.76rem;font-weight:600;font-family:inherit;background-color:var(--bg-input);color:var(--text-secondary);border:1px solid var(--border);cursor:pointer;transition:all var(--transition)}
+.demo-btn:hover,.demo-btn.active{background-color:var(--accent);color:var(--accent-text);border-color:var(--accent)}
+.view{display:none}
+.view.active{display:block}
+
+/* ── Flash ── */
+.flash-container{position:fixed;top:100px;right:20px;z-index:300;display:flex;flex-direction:column;gap:8px;max-width:300px}
+.flash{padding:12px 18px;border-radius:var(--radius-sm);font-size:.875rem;font-weight:500;box-shadow:var(--shadow-card);transition:opacity .5s;border-left:4px solid transparent}
+.flash--success{background-color:var(--bg-card);border-left-color:var(--accent);color:var(--text-primary)}
+.flash--error{background-color:var(--bg-card);border-left-color:#ef4444;color:var(--text-primary)}
+
+/* skeleton */
+@keyframes shimmer{0%{background-position:-600px 0}100%{background-position:600px 0}}
+.skeleton{border-radius:var(--radius-sm);background:linear-gradient(90deg,var(--bg-input) 25%,var(--border) 50%,var(--bg-input) 75%);background-size:600px 100%;animation:shimmer 1.4s ease-in-out infinite}
+.skeleton-img{width:100%;height:200px;border-radius:0;flex-shrink:0}
+.skeleton-line{height:14px;margin-bottom:10px;border-radius:6px}
+.skeleton-btn{height:36px;width:100%;border-radius:var(--radius-sm);margin-top:8px}
+
+@media(max-width:640px){.auth-card{padding:28px 20px}.admin-stats{gap:10px}.stat-card{min-width:90px}.stat-value{font-size:1.8rem}.td-email{display:none}}
+</style>
+</head>
+<body>
+
+<!-- ── DEMO VIEW SWITCHER ─────────────────────────────────────────────────── -->
+<div class="demo-bar">
+  <span class="demo-label">🥷 Demo Screens</span>
+  <div class="demo-btns">
+    <button class="demo-btn active" onclick="showView('home',this)">🏠 Home Feed</button>
+    <button class="demo-btn" onclick="showView('kenya',this)">🇰🇪 Kenya</button>
+    <button class="demo-btn" onclick="showView('categories',this)">📂 Categories</button>
+    <button class="demo-btn" onclick="showView('login',this)">🔐 Login</button>
+    <button class="demo-btn" onclick="showView('register',this)">📝 Register</button>
+    <button class="demo-btn" onclick="showView('admin',this)">⚙️ Admin Panel</button>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════════════════════════════════════ -->
+<!-- VIEW: HOME FEED                                                          -->
+<!-- ════════════════════════════════════════════════════════════════════════ -->
+<div id="view-home" class="view active">
+
+  <nav class="navbar">
+    <div class="container navbar__inner">
+      <span class="navbar__logo">Newsbotninja 🥷</span>
+      <div class="navbar__categories">
+        <span class="category-link active">Top Headlines</span>
+        <span class="category-link">Kenya</span>
+        <span class="category-link">Technology</span>
+        <span class="category-link">Business</span>
+        <span class="category-link">Sports</span>
+        <span class="category-link">Health</span>
+        <span class="category-link">Entertainment</span>
+        <span class="category-link">World</span>
+        <span class="category-link">Science</span>
+      </div>
+      <div class="weather-widget">
+        <span class="weather-icon">🌤️</span>
+        <span class="weather-temp">24°C</span>
+        <span class="weather-city">Nairobi</span>
+      </div>
+      <form class="navbar__search" onsubmit="return false">
+        <input class="search-input" type="text" placeholder="Search news…"/>
+        <button class="search-btn" type="submit">Go</button>
+      </form>
+      <div class="navbar__auth">
+        <span class="auth-link auth-link--admin">⚙️ Admin</span>
+        <span class="auth-user">👤 odanga</span>
+        <span class="auth-link auth-link--logout">Logout</span>
+      </div>
+      <button class="theme-toggle" id="themeToggle1" onclick="toggleTheme()">🌙</button>
+    </div>
+  </nav>
+
+  <!-- Breaking ticker -->
+  <div class="ticker-wrap">
+    <span class="ticker-label">🔴 BREAKING</span>
+    <div class="ticker-track">
+      <div class="ticker-content">
+        <span class="ticker-item">Kenya secures $500M IMF credit facility amid economic headwinds</span><span class="ticker-sep">◆</span>
+        <span class="ticker-item">Nairobi ranked Africa's fastest-growing tech hub for 2026</span><span class="ticker-sep">◆</span>
+        <span class="ticker-item">World leaders gather in Geneva for landmark climate summit</span><span class="ticker-sep">◆</span>
+        <span class="ticker-item">Scientists discover new malaria-resistant mosquito strain</span><span class="ticker-sep">◆</span>
+        <span class="ticker-item">Premier League: Arsenal top table after stunning comeback win</span><span class="ticker-sep">◆</span>
+        <span class="ticker-item">AI model beats human experts in medical diagnosis study</span><span class="ticker-sep">◆</span>
+        <span class="ticker-item">Kenya secures $500M IMF credit facility amid economic headwinds</span><span class="ticker-sep">◆</span>
+        <span class="ticker-item">Nairobi ranked Africa's fastest-growing tech hub for 2026</span><span class="ticker-sep">◆</span>
+        <span class="ticker-item">World leaders gather in Geneva for landmark climate summit</span><span class="ticker-sep">◆</span>
+        <span class="ticker-item">Scientists discover new malaria-resistant mosquito strain</span><span class="ticker-sep">◆</span>
+        <span class="ticker-item">Premier League: Arsenal top table after stunning comeback win</span><span class="ticker-sep">◆</span>
+        <span class="ticker-item">AI model beats human experts in medical diagnosis study</span><span class="ticker-sep">◆</span>
+      </div>
+    </div>
+  </div>
+
+  <main>
+    <div class="container">
+      <div class="page-header">
+        <h1 class="page-heading">Top Headlines</h1>
+        <span class="last-updated">Updated just now</span>
+      </div>
+      <div class="news-grid">
+
+        <article class="card">
+          <img class="card__image" src="https://picsum.photos/seed/kenya1/800/400" alt="News" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'"/>
+          <div class="card__image-placeholder" style="display:none">🥷</div>
+          <div class="card__body">
+            <div class="card__meta"><span class="card__source">Nation Africa</span><span class="card__date">2026-07-17</span></div>
+            <h2 class="card__title">Kenya secures $500M IMF credit facility amid economic headwinds</h2>
+            <p class="card__description">The International Monetary Fund has approved a new credit line for Kenya as the government moves to stabilise the shilling and fund critical infrastructure projects.</p>
+            <a class="card__btn" href="#" onclick="return false">Read More →</a>
+            <div class="share-bar">
+              <span class="share-btn share-btn--wa"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/><path d="M12 0C5.373 0 0 5.373 0 12c0 2.123.554 4.122 1.523 5.863L0 24l6.302-1.499A11.946 11.946 0 0012 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 21.882a9.868 9.868 0 01-5.032-1.378l-.36-.214-3.742.889.939-3.648-.234-.374A9.867 9.867 0 012.118 12C2.118 6.523 6.523 2.118 12 2.118c5.478 0 9.882 4.405 9.882 9.882 0 5.478-4.404 9.882-9.882 9.882z"/></svg></span>
+              <span class="share-btn share-btn--tw"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg></span>
+              <button class="share-btn share-btn--copy" onclick="showToast('✅ Link copied!')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg></button>
+            </div>
+          </div>
+        </article>
+
+        <article class="card">
+          <img class="card__image" src="https://picsum.photos/seed/tech42/800/400" alt="News" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'"/>
+          <div class="card__image-placeholder" style="display:none">🥷</div>
+          <div class="card__body">
+            <div class="card__meta"><span class="card__source">TechCrunch</span><span class="card__date">2026-07-17</span></div>
+            <h2 class="card__title">AI model beats human experts in medical diagnosis study</h2>
+            <p class="card__description">A new large language model trained on 40 million clinical records outperformed radiologists in detecting early-stage lung cancer with 94% accuracy.</p>
+            <a class="card__btn" href="#" onclick="return false">Read More →</a>
+            <div class="share-bar">
+              <span class="share-btn share-btn--wa"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/><path d="M12 0C5.373 0 0 5.373 0 12c0 2.123.554 4.122 1.523 5.863L0 24l6.302-1.499A11.946 11.946 0 0012 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 21.882a9.868 9.868 0 01-5.032-1.378l-.36-.214-3.742.889.939-3.648-.234-.374A9.867 9.867 0 012.118 12C2.118 6.523 6.523 2.118 12 2.118c5.478 0 9.882 4.405 9.882 9.882 0 5.478-4.404 9.882-9.882 9.882z"/></svg></span>
+              <span class="share-btn share-btn--tw"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg></span>
+              <button class="share-btn share-btn--copy" onclick="showToast('✅ Link copied!')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg></button>
+            </div>
+          </div>
+        </article>
+
+        <article class="card">
+          <img class="card__image" src="https://picsum.photos/seed/sport7/800/400" alt="News" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'"/>
+          <div class="card__image-placeholder" style="display:none">🥷</div>
+          <div class="card__body">
+            <div class="card__meta"><span class="card__source">BBC Sport</span><span class="card__date">2026-07-17</span></div>
+            <h2 class="card__title">Premier League: Arsenal top table after stunning comeback win</h2>
+            <p class="card__description">The Gunners came from two goals down to beat Manchester City 3–2 in a pulsating clash at the Emirates, lifting them to the top of the Premier League.</p>
+            <a class="card__btn" href="#" onclick="return false">Read More →</a>
+            <div class="share-bar">
+              <span class="share-btn share-btn--wa"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/><path d="M12 0C5.373 0 0 5.373 0 12c0 2.123.554 4.122 1.523 5.863L0 24l6.302-1.499A11.946 11.946 0 0012 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 21.882a9.868 9.868 0 01-5.032-1.378l-.36-.214-3.742.889.939-3.648-.234-.374A9.867 9.867 0 012.118 12C2.118 6.523 6.523 2.118 12 2.118c5.478 0 9.882 4.405 9.882 9.882 0 5.478-4.404 9.882-9.882 9.882z"/></svg></span>
+              <span class="share-btn share-btn--tw"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg></span>
+              <button class="share-btn share-btn--copy" onclick="showToast('✅ Link copied!')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg></button>
+            </div>
+          </div>
+        </article>
+
+        <article class="card">
+          <img class="card__image" src="https://picsum.photos/seed/health9/800/400" alt="News" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'"/>
+          <div class="card__image-placeholder" style="display:none">🥷</div>
+          <div class="card__body">
+            <div class="card__meta"><span class="card__source">Reuters Health</span><span class="card__date">2026-07-17</span></div>
+            <h2 class="card__title">WHO approves fast-track malaria vaccine for sub-Saharan Africa</h2>
+            <p class="card__description">The World Health Organization has granted emergency authorisation to a new malaria vaccine showing 87% efficacy in clinical trials conducted across Kenya, Ghana and Mozambique.</p>
+            <a class="card__btn" href="#" onclick="return false">Read More →</a>
+            <div class="share-bar">
+              <span class="share-btn share-btn--wa"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/><path d="M12 0C5.373 0 0 5.373 0 12c0 2.123.554 4.122 1.523 5.863L0 24l6.302-1.499A11.946 11.946 0 0012 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 21.882a9.868 9.868 0 01-5.032-1.378l-.36-.214-3.742.889.939-3.648-.234-.374A9.867 9.867 0 012.118 12C2.118 6.523 6.523 2.118 12 2.118c5.478 0 9.882 4.405 9.882 9.882 0 5.478-4.404 9.882-9.882 9.882z"/></svg></span>
+              <span class="share-btn share-btn--tw"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg></span>
+              <button class="share-btn share-btn--copy" onclick="showToast('✅ Link copied!')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg></button>
+            </div>
+          </div>
+        </article>
+
+        <article class="card">
+          <img class="card__image" src="https://picsum.photos/seed/ent22/800/400" alt="News" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'"/>
+          <div class="card__image-placeholder" style="display:none">🥷</div>
+          <div class="card__body">
+            <div class="card__meta"><span class="card__source">Variety</span><span class="card__date">2026-07-16</span></div>
+            <h2 class="card__title">Sauti Sol announces world tour with 30-city lineup including Nairobi finale</h2>
+            <p class="card__description">Kenya's beloved band Sauti Sol will embark on their largest world tour yet, spanning five continents and concluding with a sold-out homecoming concert at Kasarani Stadium.</p>
+            <a class="card__btn" href="#" onclick="return false">Read More →</a>
+            <div class="share-bar">
+              <span class="share-btn share-btn--wa"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/><path d="M12 0C5.373 0 0 5.373 0 12c0 2.123.554 4.122 1.523 5.863L0 24l6.302-1.499A11.946 11.946 0 0012 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 21.882a9.868 9.868 0 01-5.032-1.378l-.36-.214-3.742.889.939-3.648-.234-.374A9.867 9.867 0 012.118 12C2.118 6.523 6.523 2.118 12 2.118c5.478 0 9.882 4.405 9.882 9.882 0 5.478-4.404 9.882-9.882 9.882z"/></svg></span>
+              <span class="share-btn share-btn--tw"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg></span>
+              <button class="share-btn share-btn--copy" onclick="showToast('✅ Link copied!')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg></button>
+            </div>
+          </div>
+        </article>
+
+        <article class="card">
+          <img class="card__image" src="https://picsum.photos/seed/sci55/800/400" alt="News" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'"/>
+          <div class="card__image-placeholder" style="display:none">🥷</div>
+          <div class="card__body">
+            <div class="card__meta"><span class="card__source">Nature</span><span class="card__date">2026-07-16</span></div>
+            <h2 class="card__title">James Webb telescope captures clearest image of exoplanet atmosphere</h2>
+            <p class="card__description">NASA's James Webb Space Telescope has produced the most detailed spectroscopic analysis of an Earth-like exoplanet's atmosphere, detecting water vapour and carbon dioxide signatures.</p>
+            <a class="card__btn" href="#" onclick="return false">Read More →</a>
+            <div class="share-bar">
+              <span class="share-btn share-btn--wa"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/><path d="M12 0C5.373 0 0 5.373 0 12c0 2.123.554 4.122 1.523 5.863L0 24l6.302-1.499A11.946 11.946 0 0012 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 21.882a9.868 9.868 0 01-5.032-1.378l-.36-.214-3.742.889.939-3.648-.234-.374A9.867 9.867 0 012.118 12C2.118 6.523 6.523 2.118 12 2.118c5.478 0 9.882 4.405 9.882 9.882 0 5.478-4.404 9.882-9.882 9.882z"/></svg></span>
+              <span class="share-btn share-btn--tw"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg></span>
+              <button class="share-btn share-btn--copy" onclick="showToast('✅ Link copied!')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg></button>
+            </div>
+          </div>
+        </article>
+
+      </div>
+      <div class="load-more-wrap">
+        <button class="load-more-btn" onclick="showToast('🥷 Loading more stories…')">Load More Stories</button>
+      </div>
+    </div>
+  </main>
+  <footer><span class="footer__brand">Newsbotninja 🥷</span> &nbsp;·&nbsp; created by <span class="footer__author">Odanga</span></footer>
+</div>
+
+<!-- ════════════════════════════════════════════════════════════════════════ -->
+<!-- VIEW: KENYA                                                              -->
+<!-- ════════════════════════════════════════════════════════════════════════ -->
+<div id="view-kenya" class="view">
+  <nav class="navbar">
+    <div class="container navbar__inner">
+      <span class="navbar__logo">Newsbotninja 🥷</span>
+      <div class="navbar__categories">
+        <span class="category-link">Top Headlines</span>
+        <span class="category-link active">Kenya</span>
+        <span class="category-link">Technology</span>
+        <span class="category-link">Business</span>
+        <span class="category-link">Sports</span>
+        <span class="category-link">Health</span>
+        <span class="category-link">Entertainment</span>
+        <span class="category-link">World</span>
+        <span class="category-link">Science</span>
+      </div>
+      <div class="navbar__auth">
+        <span class="auth-link auth-link--admin">⚙️ Admin</span>
+        <span class="auth-user">👤 odanga</span>
+        <span class="auth-link auth-link--logout">Logout</span>
+      </div>
+      <button class="theme-toggle" onclick="toggleTheme()">🌙</button>
+    </div>
+  </nav>
+  <main><div class="container">
+    <div class="page-header"><h1 class="page-heading">🇰🇪 Kenya</h1><span class="last-updated">Updated just now</span></div>
+    <div class="news-grid">
+      <article class="card"><img class="card__image" src="https://picsum.photos/seed/ke1/800/400" alt="" onerror="this.style.display='none'"/><div class="card__body"><div class="card__meta"><span class="card__source">Daily Nation</span><span class="card__date">2026-07-17</span></div><h2 class="card__title">Ruto unveils affordable housing phase two: 200,000 units in Nairobi</h2><p class="card__description">President William Ruto has launched the second phase of the government's affordable housing programme, targeting 200,000 new units across Nairobi's informal settlements.</p><a class="card__btn" href="#" onclick="return false">Read More →</a></div></article>
+      <article class="card"><img class="card__image" src="https://picsum.photos/seed/ke2/800/400" alt="" onerror="this.style.display='none'"/><div class="card__body"><div class="card__meta"><span class="card__source">Business Daily</span><span class="card__date">2026-07-17</span></div><h2 class="card__title">Safaricom M-Pesa crosses 50 million active users milestone</h2><p class="card__description">Safaricom's mobile money platform M-Pesa has surpassed 50 million active users across Africa, cementing its position as the continent's leading fintech platform.</p><a class="card__btn" href="#" onclick="return false">Read More →</a></div></article>
+      <article class="card"><img class="card__image" src="https://picsum.photos/seed/ke3/800/400" alt="" onerror="this.style.display='none'"/><div class="card__body"><div class="card__meta"><span class="card__source">Standard Media</span><span class="card__date">2026-07-16</span></div><h2 class="card__title">Nairobi ranked Africa's fastest-growing tech hub for 2026</h2><p class="card__description">Silicon Savannah continues its meteoric rise, with Nairobi welcoming over 400 new tech startups in the first half of 2026 alone, attracting $1.2B in venture capital.</p><a class="card__btn" href="#" onclick="return false">Read More →</a></div></article>
+    </div>
+  </div></main>
+  <footer><span class="footer__brand">Newsbotninja 🥷</span> &nbsp;·&nbsp; created by <span class="footer__author">Odanga</span></footer>
+</div>
+
+<!-- ════════════════════════════════════════════════════════════════════════ -->
+<!-- VIEW: CATEGORIES OVERVIEW                                                -->
+<!-- ════════════════════════════════════════════════════════════════════════ -->
+<div id="view-categories" class="view">
+  <nav class="navbar">
+    <div class="container navbar__inner">
+      <span class="navbar__logo">Newsbotninja 🥷</span>
+      <div class="navbar__categories">
+        <span class="category-link">Top Headlines</span>
+        <span class="category-link">Kenya</span>
+        <span class="category-link">Technology</span>
+        <span class="category-link">Business</span>
+        <span class="category-link">Sports</span>
+        <span class="category-link">Health</span>
+        <span class="category-link">Entertainment</span>
+        <span class="category-link">World</span>
+        <span class="category-link">Science</span>
+      </div>
+      <button class="theme-toggle" onclick="toggleTheme()">🌙</button>
+    </div>
+  </nav>
+  <main><div class="container">
+    <div class="page-header" style="margin-bottom:28px"><h1 class="page-heading">All Categories</h1></div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:16px;margin-bottom:60px">
+      <div style="background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius-md);padding:24px;text-align:center;box-shadow:var(--shadow-card);cursor:pointer;transition:all .2s" onmouseover="this.style.borderColor='var(--accent)'" onmouseout="this.style.borderColor='var(--border)'"><div style="font-size:2rem;margin-bottom:8px">🌍</div><div style="font-weight:700;color:var(--text-primary)">Top Headlines</div><div style="font-size:.8rem;color:var(--text-muted);margin-top:4px">Kenya + Global</div></div>
+      <div style="background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius-md);padding:24px;text-align:center;box-shadow:var(--shadow-card);cursor:pointer;transition:all .2s" onmouseover="this.style.borderColor='var(--accent)'" onmouseout="this.style.borderColor='var(--border)'"><div style="font-size:2rem;margin-bottom:8px">🇰🇪</div><div style="font-weight:700;color:var(--text-primary)">Kenya</div><div style="font-size:.8rem;color:var(--text-muted);margin-top:4px">Local headlines</div></div>
+      <div style="background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius-md);padding:24px;text-align:center;box-shadow:var(--shadow-card);cursor:pointer;transition:all .2s" onmouseover="this.style.borderColor='var(--accent)'" onmouseout="this.style.borderColor='var(--border)'"><div style="font-size:2rem;margin-bottom:8px">💻</div><div style="font-weight:700;color:var(--text-primary)">Technology</div><div style="font-size:.8rem;color:var(--text-muted);margin-top:4px">Tech & Innovation</div></div>
+      <div style="background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius-md);padding:24px;text-align:center;box-shadow:var(--shadow-card);cursor:pointer;transition:all .2s" onmouseover="this.style.borderColor='var(--accent)'" onmouseout="this.style.borderColor='var(--border)'"><div style="font-size:2rem;margin-bottom:8px">📈</div><div style="font-weight:700;color:var(--text-primary)">Business</div><div style="font-size:.8rem;color:var(--text-muted);margin-top:4px">Markets & Finance</div></div>
+      <div style="background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius-md);padding:24px;text-align:center;box-shadow:var(--shadow-card);cursor:pointer;transition:all .2s" onmouseover="this.style.borderColor='var(--accent)'" onmouseout="this.style.borderColor='var(--border)'"><div style="font-size:2rem;margin-bottom:8px">⚽</div><div style="font-weight:700;color:var(--text-primary)">Sports</div><div style="font-size:.8rem;color:var(--text-muted);margin-top:4px">Scores & Fixtures</div></div>
+      <div style="background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius-md);padding:24px;text-align:center;box-shadow:var(--shadow-card);cursor:pointer;transition:all .2s" onmouseover="this.style.borderColor='var(--accent)'" onmouseout="this.style.borderColor='var(--border)'"><div style="font-size:2rem;margin-bottom:8px">🏥</div><div style="font-weight:700;color:var(--text-primary)">Health</div><div style="font-size:.8rem;color:var(--text-muted);margin-top:4px">Wellness & Medicine</div></div>
+      <div style="background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius-md);padding:24px;text-align:center;box-shadow:var(--shadow-card);cursor:pointer;transition:all .2s" onmouseover="this.style.borderColor='var(--accent)'" onmouseout="this.style.borderColor='var(--border)'"><div style="font-size:2rem;margin-bottom:8px">🎬</div><div style="font-weight:700;color:var(--text-primary)">Entertainment</div><div style="font-size:.8rem;color:var(--text-muted);margin-top:4px">Music, Film & TV</div></div>
+      <div style="background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius-md);padding:24px;text-align:center;box-shadow:var(--shadow-card);cursor:pointer;transition:all .2s" onmouseover="this.style.borderColor='var(--accent)'" onmouseout="this.style.borderColor='var(--border)'"><div style="font-size:2rem;margin-bottom:8px">🌐</div><div style="font-weight:700;color:var(--text-primary)">World</div><div style="font-size:.8rem;color:var(--text-muted);margin-top:4px">Global Affairs</div></div>
+      <div style="background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius-md);padding:24px;text-align:center;box-shadow:var(--shadow-card);cursor:pointer;transition:all .2s" onmouseover="this.style.borderColor='var(--accent)'" onmouseout="this.style.borderColor='var(--border)'"><div style="font-size:2rem;margin-bottom:8px">🔬</div><div style="font-weight:700;color:var(--text-primary)">Science</div><div style="font-size:.8rem;color:var(--text-muted);margin-top:4px">Research & Discovery</div></div>
+    </div>
+  </div></main>
+  <footer><span class="footer__brand">Newsbotninja 🥷</span> &nbsp;·&nbsp; created by <span class="footer__author">Odanga</span></footer>
+</div>
+
+<!-- ════════════════════════════════════════════════════════════════════════ -->
+<!-- VIEW: LOGIN                                                              -->
+<!-- ════════════════════════════════════════════════════════════════════════ -->
+<div id="view-login" class="view">
+  <nav class="navbar">
+    <div class="container navbar__inner">
+      <span class="navbar__logo">Newsbotninja 🥷</span>
+      <div class="navbar__auth" style="margin-left:auto">
+        <span class="auth-link">Login</span>
+        <span class="auth-link auth-link--register">Register</span>
+      </div>
+      <button class="theme-toggle" onclick="toggleTheme()">🌙</button>
+    </div>
+  </nav>
+  <main>
+    <div class="container">
+      <div class="auth-wrap">
+        <div class="auth-card">
+          <div class="auth-header">
+            <span class="auth-logo">🥷</span>
+            <h1 class="auth-title">Welcome back</h1>
+            <p class="auth-subtitle">Log in to Newsbotninja</p>
+          </div>
+          <div class="auth-form">
+            <div class="form-group">
+              <label class="form-label">Email</label>
+              <input class="form-input" type="email" placeholder="you@example.com"/>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Password</label>
+              <input class="form-input" type="password" placeholder="••••••••"/>
+            </div>
+            <button class="form-btn" onclick="showToast('🥷 Logging in…')">Log In →</button>
+          </div>
+          <p class="auth-switch">Don't have an account? <a onclick="showView('register',null)">Register</a></p>
+        </div>
+      </div>
+    </div>
+  </main>
+  <footer><span class="footer__brand">Newsbotninja 🥷</span> &nbsp;·&nbsp; created by <span class="footer__author">Odanga</span></footer>
+</div>
+
+<!-- ════════════════════════════════════════════════════════════════════════ -->
+<!-- VIEW: REGISTER                                                           -->
+<!-- ════════════════════════════════════════════════════════════════════════ -->
+<div id="view-register" class="view">
+  <nav class="navbar">
+    <div class="container navbar__inner">
+      <span class="navbar__logo">Newsbotninja 🥷</span>
+      <div class="navbar__auth" style="margin-left:auto">
+        <span class="auth-link">Login</span>
+        <span class="auth-link auth-link--register">Register</span>
+      </div>
+      <button class="theme-toggle" onclick="toggleTheme()">🌙</button>
+    </div>
+  </nav>
+  <main>
+    <div class="container">
+      <div class="auth-wrap">
+        <div class="auth-card">
+          <div class="auth-header">
+            <span class="auth-logo">🥷</span>
+            <h1 class="auth-title">Create account</h1>
+            <p class="auth-subtitle">Join Newsbotninja for free</p>
+          </div>
+          <div class="auth-form">
+            <div class="form-group">
+              <label class="form-label">Username</label>
+              <input class="form-input" type="text" placeholder="ninja42"/>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Email</label>
+              <input class="form-input" type="email" placeholder="you@example.com"/>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Password</label>
+              <input class="form-input" type="password" placeholder="Min. 6 characters"/>
+            </div>
+            <button class="form-btn" onclick="showToast('✅ Account created! Welcome.')">Create Account →</button>
+          </div>
+          <p class="auth-switch">Already have an account? <a onclick="showView('login',null)">Log in</a></p>
+        </div>
+      </div>
+    </div>
+  </main>
+  <footer><span class="footer__brand">Newsbotninja 🥷</span> &nbsp;·&nbsp; created by <span class="footer__author">Odanga</span></footer>
+</div>
+
+<!-- ════════════════════════════════════════════════════════════════════════ -->
+<!-- VIEW: ADMIN PANEL                                                        -->
+<!-- ════════════════════════════════════════════════════════════════════════ -->
+<div id="view-admin" class="view">
+  <nav class="navbar">
+    <div class="container navbar__inner">
+      <span class="navbar__logo">Newsbotninja 🥷</span>
+      <div class="navbar__auth" style="margin-left:auto">
+        <span class="auth-link auth-link--admin">⚙️ Admin</span>
+        <span class="auth-user">👤 odanga</span>
+        <span class="auth-link auth-link--logout">Logout</span>
+      </div>
+      <button class="theme-toggle" onclick="toggleTheme()">🌙</button>
+    </div>
+  </nav>
+  <main><div class="container">
+    <div class="admin-header">
+      <div>
+        <h1 class="page-heading">⚙️ Admin Panel</h1>
+        <p class="admin-subtitle">Manage Newsbotninja users</p>
+      </div>
+      <button class="admin-back-btn" onclick="showView('home',document.querySelector('.demo-btn'))">← Back to News</button>
+    </div>
+    <div class="admin-stats">
+      <div class="stat-card"><span class="stat-value">4</span><span class="stat-label">Total Users</span></div>
+      <div class="stat-card"><span class="stat-value">1</span><span class="stat-label">Admins</span></div>
+      <div class="stat-card"><span class="stat-value">3</span><span class="stat-label">Regular Users</span></div>
+    </div>
+    <div class="admin-table-wrap">
+      <table class="admin-table">
+        <thead><tr><th>#</th><th>Username</th><th>Email</th><th>Role</th><th>Joined</th><th>Action</th></tr></thead>
+        <tbody>
+          <tr class="admin-row"><td class="td-id">1</td><td class="td-username">odanga <span class="badge badge--admin">Admin</span></td><td class="td-email">odangalevi@gmail.com</td><td><span class="badge badge--admin">Admin</span></td><td class="td-date">2026-07-17</td><td><span class="self-label">You</span></td></tr>
+          <tr><td class="td-id">2</td><td class="td-username">wanjiku_k</td><td class="td-email">wanjiku@example.com</td><td><span class="badge badge--user">User</span></td><td class="td-date">2026-07-17</td><td><button class="delete-btn" onclick="showToast('🗑 User deleted.')">🗑 Delete</button></td></tr>
+          <tr><td class="td-id">3</td><td class="td-username">brian254</td><td class="td-email">brian@example.com</td><td><span class="badge badge--user">User</span></td><td class="td-date">2026-07-17</td><td><button class="delete-btn" onclick="showToast('🗑 User deleted.')">🗑 Delete</button></td></tr>
+          <tr><td class="td-id">4</td><td class="td-username">amina_m</td><td class="td-email">amina@example.com</td><td><span class="badge badge--user">User</span></td><td class="td-date">2026-07-17</td><td><button class="delete-btn" onclick="showToast('🗑 User deleted.')">🗑 Delete</button></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div></main>
+  <footer><span class="footer__brand">Newsbotninja 🥷</span> &nbsp;·&nbsp; created by <span class="footer__author">Odanga</span></footer>
+</div>
+
+<!-- ── Toast ── -->
+<div class="toast" id="toast"></div>
+
+<script>
+// View switcher
+function showView(name, btn) {
+  document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+  document.querySelectorAll('.demo-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('view-' + name).classList.add('active');
+  if (btn) btn.classList.add('active');
+  window.scrollTo(0, 0);
+}
+
+// Theme toggle
+function toggleTheme() {
+  const on = document.documentElement.classList.toggle('light');
+  document.querySelectorAll('.theme-toggle').forEach(b => b.textContent = on ? '☀️' : '🌙');
+  localStorage.setItem('theme', on ? 'light' : 'dark');
+}
+if (localStorage.getItem('theme') === 'light') {
+  document.documentElement.classList.add('light');
+  document.querySelectorAll('.theme-toggle').forEach(b => b.textContent = '☀️');
+}
+
+// Toast
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2500);
+}
+</script>
+</body>
+</html>

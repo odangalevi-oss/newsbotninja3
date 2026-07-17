@@ -1,0 +1,8 @@
+uploads = []
+generated = []
+
+[[outputs]]
+id = "KTXReyJqeFkwPXa55oFfZ"
+uri = "file://newsbotninja/newsbotninja_demo.html"
+type = "unspecified"
+title = "Newsbotninja 🥷 — Presentation Demo"
