@@ -1,52 +1,6 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Newsbotninja 🥷</title>
-  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}" />
-</head>
-<body>
+{% extends "base.html" %}
 
-  <!-- ── Navbar ────────────────────────────────────────────────────────── -->
-  <nav class="navbar">
-    <div class="container navbar__inner">
-      <a href="/" class="navbar__logo">Newsbotninja 🥷</a>
-
-      <div class="navbar__categories">
-        {% set categories = [
-          ('/', 'Top Headlines', 'top'),
-          ('/kenya', 'Kenya', 'kenya'),
-          ('/technology', 'Technology', 'technology'),
-          ('/business', 'Business', 'business'),
-          ('/sports', 'Sports', 'sports')
-        ] %}
-        {% for path, label, slug in categories %}
-          <a href="{{ path }}"
-             class="category-link {% if active_category == label %}active{% endif %}">
-            {{ label }}
-          </a>
-        {% endfor %}
-      </div>
-
-      <!-- Weather widget -->
-      <div class="weather-widget" id="weatherWidget">
-        <span class="weather-icon">🌤️</span>
-        <span class="weather-temp" id="weatherTemp">--°C</span>
-        <span class="weather-city" id="weatherCity">Nairobi</span>
-      </div>
-
-      <form action="/search" method="get" class="navbar__search">
-        <input class="search-input" type="text" name="q"
-               placeholder="Search news…" value="{{ search_query or '' }}" />
-        <button class="search-btn" type="submit">Go</button>
-      </form>
-
-      <button class="theme-toggle" id="themeToggle" aria-label="Toggle theme">🌙</button>
-    </div>
-  </nav>
-
-  <!-- ── Breaking news ticker ───────────────────────────────────────────── -->
+{% block ticker %}
   {% if ticker_headlines %}
   <div class="ticker-wrap">
     <span class="ticker-label">🔴 BREAKING</span>
@@ -56,7 +10,6 @@
           <span class="ticker-item">{{ headline }}</span>
           <span class="ticker-sep">◆</span>
         {% endfor %}
-        {# duplicate for seamless loop #}
         {% for headline in ticker_headlines %}
           <span class="ticker-item">{{ headline }}</span>
           <span class="ticker-sep">◆</span>
@@ -65,14 +18,9 @@
     </div>
   </div>
   {% endif %}
+{% endblock %}
 
-  <!-- ── Refresh banner (hidden until new content detected) ────────────── -->
-  <div class="refresh-banner" id="refreshBanner" hidden>
-    🔄 New stories available —
-    <button onclick="location.reload()">Refresh now</button>
-  </div>
-
-  <!-- ── Main ──────────────────────────────────────────────────────────── -->
+{% block content %}
   <main>
     <div class="container">
 
@@ -99,7 +47,6 @@
         </div>
       {% else %}
 
-        <!-- News grid -->
         <div class="news-grid" id="newsGrid">
           {% for article in articles %}
             <article class="card">
@@ -132,7 +79,6 @@
                 <a class="card__btn" href="{{ article.url }}"
                    target="_blank" rel="noopener noreferrer">Read More →</a>
 
-                <!-- Share bar -->
                 <div class="share-bar">
                   <a class="share-btn share-btn--wa"
                      href="https://wa.me/?text={{ (article.title + ' ' + article.url) | urlencode }}"
@@ -154,7 +100,6 @@
           {% endfor %}
         </div>
 
-        <!-- Load More -->
         {% if active_category != 'Search' %}
         <div class="load-more-wrap" id="loadMoreWrap">
           <button class="load-more-btn" id="loadMoreBtn">Load More Stories</button>
@@ -164,194 +109,145 @@
       {% endif %}
     </div>
   </main>
+{% endblock %}
 
-  <!-- ── Footer ────────────────────────────────────────────────────────── -->
-  <footer>
-    <span class="footer__brand">Newsbotninja 🥷</span>
-    &nbsp;·&nbsp; created by <span class="footer__author">Odanga</span>
-  </footer>
+{% block scripts %}
+<script>
+  // Last updated timestamp
+  function timeAgo(date) {
+    const secs = Math.floor((Date.now() - date) / 1000);
+    if (secs < 60)   return 'Updated just now';
+    if (secs < 3600) return `Updated ${Math.floor(secs / 60)}m ago`;
+    return `Updated ${Math.floor(secs / 3600)}h ago`;
+  }
+  const loadedAt  = Date.now();
+  const lastUpdEl = document.getElementById('lastUpdated');
+  setInterval(() => { lastUpdEl.textContent = timeAgo(loadedAt); }, 60000);
 
-  <!-- ── Toast ─────────────────────────────────────────────────────────── -->
-  <div class="toast" id="toast"></div>
+  // Auto-refresh (every 5 min)
+  const firstTitle = document.querySelector('.card__title')?.textContent?.trim() || '';
+  const category   = '{{ category_slug }}';
 
-  <!-- ── Scripts ───────────────────────────────────────────────────────── -->
-  <script>
-    // ── Theme toggle ──────────────────────────────────────────────────────
-    const html  = document.documentElement;
-    const themeBtn = document.getElementById('themeToggle');
-    if (localStorage.getItem('theme') === 'light') {
-      html.classList.add('light');
-      themeBtn.textContent = '☀️';
-    }
-    themeBtn.addEventListener('click', () => {
-      const isLight = html.classList.toggle('light');
-      themeBtn.textContent = isLight ? '☀️' : '🌙';
-      localStorage.setItem('theme', isLight ? 'light' : 'dark');
-    });
-
-    // ── Toast helper ─────────────────────────────────────────────────────
-    function showToast(msg) {
-      const t = document.getElementById('toast');
-      t.textContent = msg;
-      t.classList.add('show');
-      setTimeout(() => t.classList.remove('show'), 2500);
-    }
-
-    // ── Copy link ─────────────────────────────────────────────────────────
-    function copyLink(url) {
-      navigator.clipboard.writeText(url)
-        .then(() => showToast('✅ Link copied!'))
-        .catch(() => showToast('Could not copy link'));
-    }
-
-    // ── Weather widget ────────────────────────────────────────────────────
-    fetch('/api/weather?city=Nairobi')
+  setInterval(() => {
+    fetch(`/api/news?page=1&category=${encodeURIComponent(category)}`)
       .then(r => r.json())
       .then(d => {
-        if (d.error) return;
-        document.getElementById('weatherTemp').textContent = d.temp + '°C';
-        document.querySelector('.weather-icon').textContent = d.icon;
+        if (!d.articles?.length) return;
+        const freshTitle = (d.articles[0]?.title || '').split(' - ')[0].trim();
+        if (freshTitle && freshTitle !== firstTitle) {
+          document.getElementById('refreshBanner').hidden = false;
+        }
       })
       .catch(() => {});
+  }, 5 * 60 * 1000);
 
-    // ── Last updated timestamp ────────────────────────────────────────────
-    function timeAgo(date) {
-      const secs = Math.floor((Date.now() - date) / 1000);
-      if (secs < 60)  return 'Updated just now';
-      if (secs < 3600) return `Updated ${Math.floor(secs / 60)}m ago`;
-      return `Updated ${Math.floor(secs / 3600)}h ago`;
-    }
-    const loadedAt = Date.now();
-    const lastUpdEl = document.getElementById('lastUpdated');
-    setInterval(() => { lastUpdEl.textContent = timeAgo(loadedAt); }, 60000);
+  // Skeleton builder
+  function makeSkeleton() {
+    return `<article class="card skeleton-card">
+      <div class="skeleton skeleton-img"></div>
+      <div class="card__body">
+        <div class="skeleton skeleton-line" style="width:40%"></div>
+        <div class="skeleton skeleton-line" style="width:90%"></div>
+        <div class="skeleton skeleton-line" style="width:75%"></div>
+        <div class="skeleton skeleton-line" style="width:55%"></div>
+        <div class="skeleton skeleton-btn"></div>
+      </div>
+    </article>`;
+  }
 
-    // ── Auto-refresh (every 5 min) ────────────────────────────────────────
-    const firstTitle = document.querySelector('.card__title')?.textContent?.trim() || '';
-    const category   = '{{ category_slug }}';
+  // Card builder
+  function makeCard(a) {
+    const title  = (a.title  || 'No title').split(' - ')[0];
+    const desc   = a.description || a.title || '';
+    const source = a.source?.name || '';
+    const date   = (a.publishedAt || '').slice(0, 10);
+    const img    = a.urlToImage
+      ? `<img class="card__image" src="${a.urlToImage}" alt="${title}"
+             onerror="this.onerror=null;this.src='https://placehold.co/800x400/1a2236/14b8a6?text=🥷';">`
+      : `<div class="card__image-placeholder">🥷</div>`;
+    const waUrl  = encodeURIComponent(title + ' ' + a.url);
+    const twText = encodeURIComponent(title);
+    const twUrl  = encodeURIComponent(a.url);
 
-    setInterval(() => {
-      fetch(`/api/news?page=1&category=${encodeURIComponent(category)}`)
-        .then(r => r.json())
-        .then(d => {
-          if (!d.articles?.length) return;
-          const freshTitle = (d.articles[0]?.title || '').split(' - ')[0].trim();
-          if (freshTitle && freshTitle !== firstTitle) {
-            document.getElementById('refreshBanner').hidden = false;
-          }
-        })
-        .catch(() => {});
-    }, 5 * 60 * 1000);
-
-    // ── Skeleton card builder ─────────────────────────────────────────────
-    function makeSkeleton() {
-      return `<article class="card skeleton-card">
-        <div class="skeleton skeleton-img"></div>
-        <div class="card__body">
-          <div class="skeleton skeleton-line" style="width:40%"></div>
-          <div class="skeleton skeleton-line" style="width:90%"></div>
-          <div class="skeleton skeleton-line" style="width:75%"></div>
-          <div class="skeleton skeleton-line" style="width:55%"></div>
-          <div class="skeleton skeleton-btn"></div>
+    return `<article class="card">
+      ${img}
+      <div class="card__body">
+        <div class="card__meta">
+          ${source ? `<span class="card__source">${source}</span>` : ''}
+          ${date   ? `<span class="card__date">${date}</span>`   : ''}
         </div>
-      </article>`;
-    }
-
-    // ── Card builder (for dynamically loaded articles) ────────────────────
-    function makeCard(a) {
-      const title  = (a.title  || 'No title').split(' - ')[0];
-      const desc   = a.description || a.title || '';
-      const source = a.source?.name || '';
-      const date   = (a.publishedAt || '').slice(0, 10);
-      const img    = a.urlToImage
-        ? `<img class="card__image" src="${a.urlToImage}" alt="${title}"
-               onerror="this.onerror=null;this.src='https://placehold.co/800x400/1a2236/14b8a6?text=🥷';">`
-        : `<div class="card__image-placeholder">🥷</div>`;
-      const waUrl  = encodeURIComponent(title + ' ' + a.url);
-      const twText = encodeURIComponent(title);
-      const twUrl  = encodeURIComponent(a.url);
-
-      return `<article class="card">
-        ${img}
-        <div class="card__body">
-          <div class="card__meta">
-            ${source ? `<span class="card__source">${source}</span>` : ''}
-            ${date   ? `<span class="card__date">${date}</span>` : ''}
-          </div>
-          <h2 class="card__title">${title}</h2>
-          <p class="card__description">${desc}</p>
-          <a class="card__btn" href="${a.url}" target="_blank" rel="noopener noreferrer">Read More →</a>
-          <div class="share-bar">
-            <a class="share-btn share-btn--wa"
-               href="https://wa.me/?text=${waUrl}" target="_blank" rel="noopener" title="WhatsApp">
-              <svg viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/><path d="M12 0C5.373 0 0 5.373 0 12c0 2.123.554 4.122 1.523 5.863L0 24l6.302-1.499A11.946 11.946 0 0012 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 21.882a9.868 9.868 0 01-5.032-1.378l-.36-.214-3.742.889.939-3.648-.234-.374A9.867 9.867 0 012.118 12C2.118 6.523 6.523 2.118 12 2.118c5.478 0 9.882 4.405 9.882 9.882 0 5.478-4.404 9.882-9.882 9.882z"/></svg>
-            </a>
-            <a class="share-btn share-btn--tw"
-               href="https://twitter.com/intent/tweet?text=${twText}&url=${twUrl}"
-               target="_blank" rel="noopener" title="X / Twitter">
-              <svg viewBox="0 0 24 24" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>
-            </a>
-            <button class="share-btn share-btn--copy"
-                    onclick="copyLink('${a.url}')" title="Copy link">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
-            </button>
-          </div>
+        <h2 class="card__title">${title}</h2>
+        <p class="card__description">${desc}</p>
+        <a class="card__btn" href="${a.url}" target="_blank" rel="noopener noreferrer">Read More →</a>
+        <div class="share-bar">
+          <a class="share-btn share-btn--wa"
+             href="https://wa.me/?text=${waUrl}" target="_blank" rel="noopener" title="WhatsApp">
+            <svg viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/><path d="M12 0C5.373 0 0 5.373 0 12c0 2.123.554 4.122 1.523 5.863L0 24l6.302-1.499A11.946 11.946 0 0012 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 21.882a9.868 9.868 0 01-5.032-1.378l-.36-.214-3.742.889.939-3.648-.234-.374A9.867 9.867 0 012.118 12C2.118 6.523 6.523 2.118 12 2.118c5.478 0 9.882 4.405 9.882 9.882 0 5.478-4.404 9.882-9.882 9.882z"/></svg>
+          </a>
+          <a class="share-btn share-btn--tw"
+             href="https://twitter.com/intent/tweet?text=${twText}&url=${twUrl}"
+             target="_blank" rel="noopener" title="X / Twitter">
+            <svg viewBox="0 0 24 24" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>
+          </a>
+          <button class="share-btn share-btn--copy"
+                  onclick="copyLink('${a.url}')" title="Copy link">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
+          </button>
         </div>
-      </article>`;
-    }
+      </div>
+    </article>`;
+  }
 
-    // ── Load More ─────────────────────────────────────────────────────────
-    let currentPage   = 1;
-    let loadingMore   = false;
-    const grid        = document.getElementById('newsGrid');
-    const loadMoreBtn = document.getElementById('loadMoreBtn');
+  // Load More
+  let currentPage = 1;
+  let loadingMore = false;
+  const grid        = document.getElementById('newsGrid');
+  const loadMoreBtn = document.getElementById('loadMoreBtn');
 
-    if (loadMoreBtn) {
-      loadMoreBtn.addEventListener('click', async () => {
-        if (loadingMore) return;
-        loadingMore = true;
-        loadMoreBtn.textContent = 'Loading…';
-        loadMoreBtn.disabled = true;
+  if (loadMoreBtn) {
+    loadMoreBtn.addEventListener('click', async () => {
+      if (loadingMore) return;
+      loadingMore = true;
+      loadMoreBtn.textContent = 'Loading…';
+      loadMoreBtn.disabled    = true;
 
-        // Insert 3 skeleton cards
-        const skeletonIds = [0, 1, 2].map(i => {
-          const div = document.createElement('div');
-          div.innerHTML = makeSkeleton();
-          const card = div.firstElementChild;
-          card.id = `skel-${i}`;
-          grid.appendChild(card);
-          return card.id;
-        });
-
-        try {
-          currentPage++;
-          const res  = await fetch(`/api/news?page=${currentPage}&category=${encodeURIComponent(category)}`);
-          const data = await res.json();
-
-          // Remove skeletons
-          skeletonIds.forEach(id => document.getElementById(id)?.remove());
-
-          if (!data.articles?.length || data.error) {
-            document.getElementById('loadMoreWrap').remove();
-            showToast('No more stories to load.');
-          } else {
-            data.articles.forEach(a => {
-              const div = document.createElement('div');
-              div.innerHTML = makeCard(a);
-              grid.appendChild(div.firstElementChild);
-            });
-            loadMoreBtn.textContent = 'Load More Stories';
-            loadMoreBtn.disabled = false;
-            loadingMore = false;
-          }
-        } catch (e) {
-          skeletonIds.forEach(id => document.getElementById(id)?.remove());
-          loadMoreBtn.textContent = 'Load More Stories';
-          loadMoreBtn.disabled = false;
-          loadingMore = false;
-          showToast('Failed to load more stories.');
-        }
+      const skeletonIds = [0, 1, 2].map(i => {
+        const div  = document.createElement('div');
+        div.innerHTML = makeSkeleton();
+        const card = div.firstElementChild;
+        card.id    = `skel-${i}`;
+        grid.appendChild(card);
+        return card.id;
       });
-    }
-  </script>
-</body>
-</html>
+
+      try {
+        currentPage++;
+        const res  = await fetch(`/api/news?page=${currentPage}&category=${encodeURIComponent(category)}`);
+        const data = await res.json();
+
+        skeletonIds.forEach(id => document.getElementById(id)?.remove());
+
+        if (!data.articles?.length || data.error) {
+          document.getElementById('loadMoreWrap').remove();
+          showToast('No more stories to load.');
+        } else {
+          data.articles.forEach(a => {
+            const div = document.createElement('div');
+            div.innerHTML = makeCard(a);
+            grid.appendChild(div.firstElementChild);
+          });
+          loadMoreBtn.textContent = 'Load More Stories';
+          loadMoreBtn.disabled    = false;
+          loadingMore = false;
+        }
+      } catch (e) {
+        skeletonIds.forEach(id => document.getElementById(id)?.remove());
+        loadMoreBtn.textContent = 'Load More Stories';
+        loadMoreBtn.disabled    = false;
+        loadingMore = false;
+        showToast('Failed to load more stories.');
+      }
+    });
+  }
+</script>
+{% endblock %}

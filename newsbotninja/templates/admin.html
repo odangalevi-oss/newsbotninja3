@@ -1,0 +1,89 @@
+{% extends "base.html" %}
+{% block title %}Admin Panel · Newsbotninja 🥷{% endblock %}
+
+{% block content %}
+<main>
+  <div class="container">
+
+    <div class="admin-header">
+      <div>
+        <h1 class="page-heading">⚙️ Admin Panel</h1>
+        <p class="admin-subtitle">Manage Newsbotninja users</p>
+      </div>
+      <a href="/" class="admin-back-btn">← Back to News</a>
+    </div>
+
+    <!-- Stats strip -->
+    <div class="admin-stats">
+      <div class="stat-card">
+        <span class="stat-value">{{ user_count }}</span>
+        <span class="stat-label">Total Users</span>
+      </div>
+      <div class="stat-card">
+        <span class="stat-value">
+          {{ users | selectattr('is_admin', 'equalto', 1) | list | length }}
+        </span>
+        <span class="stat-label">Admins</span>
+      </div>
+      <div class="stat-card">
+        <span class="stat-value">
+          {{ users | selectattr('is_admin', 'equalto', 0) | list | length }}
+        </span>
+        <span class="stat-label">Regular Users</span>
+      </div>
+    </div>
+
+    <!-- Users table -->
+    <div class="admin-table-wrap">
+      <table class="admin-table">
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Username</th>
+            <th>Email</th>
+            <th>Role</th>
+            <th>Joined</th>
+            <th>Action</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for user in users %}
+          <tr class="{% if user.is_admin %}admin-row{% endif %}">
+            <td class="td-id">{{ user.id }}</td>
+            <td class="td-username">
+              {{ user.username }}
+              {% if user.is_admin %}<span class="badge badge--admin">Admin</span>{% endif %}
+            </td>
+            <td class="td-email">{{ user.email }}</td>
+            <td>
+              {% if user.is_admin %}
+                <span class="badge badge--admin">Admin</span>
+              {% else %}
+                <span class="badge badge--user">User</span>
+              {% endif %}
+            </td>
+            <td class="td-date">{{ user.created_at[:10] if user.created_at else '—' }}</td>
+            <td>
+              {% if user.id != current_user.id %}
+              <form method="POST"
+                    action="/admin/delete/{{ user.id }}"
+                    onsubmit="return confirm('Delete {{ user.username }}? This cannot be undone.');">
+                <button type="submit" class="delete-btn">🗑 Delete</button>
+              </form>
+              {% else %}
+                <span class="self-label">You</span>
+              {% endif %}
+            </td>
+          </tr>
+          {% else %}
+          <tr>
+            <td colspan="6" class="table-empty">No users yet.</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+  </div>
+</main>
+{% endblock %}

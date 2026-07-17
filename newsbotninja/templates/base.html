@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>{% block title %}Newsbotninja 🥷{% endblock %}</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}" />
+</head>
+<body>
+
+  <!-- ── Navbar ────────────────────────────────────────────────────────── -->
+  <nav class="navbar">
+    <div class="container navbar__inner">
+      <a href="/" class="navbar__logo">Newsbotninja 🥷</a>
+
+      <div class="navbar__categories">
+        {% set categories = [
+          ('/', 'Top Headlines', 'top'),
+          ('/kenya', 'Kenya', 'kenya'),
+          ('/technology', 'Technology', 'technology'),
+          ('/business', 'Business', 'business'),
+          ('/sports', 'Sports', 'sports'),
+          ('/health', 'Health', 'health'),
+          ('/entertainment', 'Entertainment', 'entertainment'),
+          ('/world', 'World', 'world'),
+          ('/science', 'Science', 'science')
+        ] %}
+        {% for path, label, slug in categories %}
+          <a href="{{ path }}"
+             class="category-link {% if active_category == label %}active{% endif %}">
+            {{ label }}
+          </a>
+        {% endfor %}
+      </div>
+
+      <!-- Weather widget -->
+      <div class="weather-widget" id="weatherWidget">
+        <span class="weather-icon">🌤️</span>
+        <span class="weather-temp" id="weatherTemp">--°C</span>
+        <span class="weather-city" id="weatherCity">Nairobi</span>
+      </div>
+
+      <form action="/search" method="get" class="navbar__search">
+        <input class="search-input" type="text" name="q"
+               placeholder="Search news…" value="{{ search_query or '' }}" />
+        <button class="search-btn" type="submit">Go</button>
+      </form>
+
+      <!-- Auth links -->
+      <div class="navbar__auth">
+        {% if current_user.is_authenticated %}
+          {% if current_user.is_admin %}
+            <a href="/admin" class="auth-link auth-link--admin" title="Admin Panel">⚙️ Admin</a>
+          {% endif %}
+          <span class="auth-user">👤 {{ current_user.username }}</span>
+          <a href="/logout" class="auth-link auth-link--logout">Logout</a>
+        {% else %}
+          <a href="/login"    class="auth-link">Login</a>
+          <a href="/register" class="auth-link auth-link--register">Register</a>
+        {% endif %}
+      </div>
+
+      <button class="theme-toggle" id="themeToggle" aria-label="Toggle theme">🌙</button>
+    </div>
+  </nav>
+
+  {% block ticker %}{% endblock %}
+
+  <!-- ── Refresh banner ────────────────────────────────────────────────── -->
+  <div class="refresh-banner" id="refreshBanner" hidden>
+    🔄 New stories available —
+    <button onclick="location.reload()">Refresh now</button>
+  </div>
+
+  <!-- ── Flash messages ────────────────────────────────────────────────── -->
+  {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+      <div class="flash-container">
+        {% for category, message in messages %}
+          <div class="flash flash--{{ category }}">{{ message }}</div>
+        {% endfor %}
+      </div>
+    {% endif %}
+  {% endwith %}
+
+  <!-- ── Main content ──────────────────────────────────────────────────── -->
+  {% block content %}{% endblock %}
+
+  <!-- ── Footer ────────────────────────────────────────────────────────── -->
+  <footer>
+    <span class="footer__brand">Newsbotninja 🥷</span>
+    &nbsp;·&nbsp; created by <span class="footer__author">Odanga</span>
+  </footer>
+
+  <!-- ── Toast ─────────────────────────────────────────────────────────── -->
+  <div class="toast" id="toast"></div>
+
+  <!-- ── Common scripts ────────────────────────────────────────────────── -->
+  <script>
+    // Theme toggle
+    const html     = document.documentElement;
+    const themeBtn = document.getElementById('themeToggle');
+    if (localStorage.getItem('theme') === 'light') {
+      html.classList.add('light');
+      themeBtn.textContent = '☀️';
+    }
+    themeBtn.addEventListener('click', () => {
+      const isLight = html.classList.toggle('light');
+      themeBtn.textContent = isLight ? '☀️' : '🌙';
+      localStorage.setItem('theme', isLight ? 'light' : 'dark');
+    });
+
+    // Toast helper
+    function showToast(msg) {
+      const t = document.getElementById('toast');
+      t.textContent = msg;
+      t.classList.add('show');
+      setTimeout(() => t.classList.remove('show'), 2500);
+    }
+
+    // Copy link
+    function copyLink(url) {
+      navigator.clipboard.writeText(url)
+        .then(() => showToast('✅ Link copied!'))
+        .catch(() => showToast('Could not copy link'));
+    }
+
+    // Weather widget
+    fetch('/api/weather?city=Nairobi')
+      .then(r => r.json())
+      .then(d => {
+        if (d.error) return;
+        document.getElementById('weatherTemp').textContent = d.temp + '°C';
+        document.querySelector('.weather-icon').textContent = d.icon;
+      })
+      .catch(() => {});
+
+    // Auto-dismiss flash messages
+    document.querySelectorAll('.flash').forEach(el => {
+      setTimeout(() => el.style.opacity = '0', 4000);
+      setTimeout(() => el.remove(), 4500);
+    });
+  </script>
+
+  {% block scripts %}{% endblock %}
+</body>
+</html>

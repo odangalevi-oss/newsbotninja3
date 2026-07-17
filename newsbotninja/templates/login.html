@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+{% block title %}Login · Newsbotninja 🥷{% endblock %}
+
+{% block content %}
+<main>
+  <div class="container">
+    <div class="auth-wrap">
+      <div class="auth-card">
+        <div class="auth-header">
+          <span class="auth-logo">🥷</span>
+          <h1 class="auth-title">Welcome back</h1>
+          <p class="auth-subtitle">Log in to Newsbotninja</p>
+        </div>
+
+        <form method="POST" action="/login" class="auth-form">
+          <div class="form-group">
+            <label class="form-label" for="email">Email</label>
+            <input
+              class="form-input"
+              type="email"
+              id="email"
+              name="email"
+              placeholder="you@example.com"
+              required
+              autocomplete="email"
+            />
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="password">Password</label>
+            <input
+              class="form-input"
+              type="password"
+              id="password"
+              name="password"
+              placeholder="••••••••"
+              required
+              autocomplete="current-password"
+            />
+          </div>
+
+          <button type="submit" class="form-btn">Log In →</button>
+        </form>
+
+        <p class="auth-switch">
+          Don't have an account? <a href="/register">Register</a>
+        </p>
+      </div>
+    </div>
+  </div>
+</main>
+{% endblock %}
