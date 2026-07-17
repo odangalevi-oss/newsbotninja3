@@ -24,13 +24,13 @@ args = "Newsbotninja"
 name = "Newsbotninja"
 author = "agent"
 
+[workflows.workflow.metadata]
+outputType = "webview"
+
 [[workflows.workflow.tasks]]
 task = "shell.exec"
-args = "cd newsbotninja && python bot.py"
+args = "cd newsbotninja && python app.py"
 waitForPort = 8099
-
-[workflows.workflow.metadata]
-outputType = "console"
 
 [agent]
 stack = "PNPM_WORKSPACE"
