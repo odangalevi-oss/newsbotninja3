@@ -8,7 +8,7 @@
     <div class="admin-header">
       <div>
         <h1 class="page-heading">⚙️ Admin Panel</h1>
-        <p class="admin-subtitle">Manage Newsbotninja users</p>
+        <p class="admin-subtitle">Manage your Newsbotninja</p>
       </div>
       <a href="/" class="admin-back-btn">← Back to News</a>
     </div>
@@ -17,33 +17,32 @@
     <div class="admin-stats">
       <div class="stat-card">
         <span class="stat-value">{{ user_count }}</span>
-        <span class="stat-label">Total Users</span>
+        <span class="stat-label">👥 Users</span>
       </div>
       <div class="stat-card">
-        <span class="stat-value">
-          {{ users | selectattr('is_admin', 'equalto', 1) | list | length }}
-        </span>
-        <span class="stat-label">Admins</span>
+        <span class="stat-value">{{ comment_count }}</span>
+        <span class="stat-label">💬 Comments</span>
       </div>
       <div class="stat-card">
-        <span class="stat-value">
-          {{ users | selectattr('is_admin', 'equalto', 0) | list | length }}
-        </span>
-        <span class="stat-label">Regular Users</span>
+        <span class="stat-value">{{ subscriber_count }}</span>
+        <span class="stat-label">📨 Subscribers</span>
       </div>
     </div>
 
-    <!-- Users table -->
+    <!-- Tab nav -->
+    <nav class="admin-tabs">
+      <a href="/admin"              class="admin-tab {% if tab == 'users'      %}active{% endif %}">👥 Users</a>
+      <a href="/admin/comments"     class="admin-tab {% if tab == 'comments'   %}active{% endif %}">💬 Comments</a>
+      <a href="/admin/newsletter"   class="admin-tab {% if tab == 'newsletter' %}active{% endif %}">📨 Newsletter</a>
+    </nav>
+
+    <!-- ───── USERS TAB ───── -->
+    {% if tab == 'users' %}
     <div class="admin-table-wrap">
       <table class="admin-table">
         <thead>
           <tr>
-            <th>#</th>
-            <th>Username</th>
-            <th>Email</th>
-            <th>Role</th>
-            <th>Joined</th>
-            <th>Action</th>
+            <th>#</th><th>Username</th><th>Email</th><th>Role</th><th>Joined</th><th>Action</th>
           </tr>
         </thead>
         <tbody>
@@ -65,9 +64,8 @@
             <td class="td-date">{{ user.created_at[:10] if user.created_at else '—' }}</td>
             <td>
               {% if user.id != current_user.id %}
-              <form method="POST"
-                    action="/admin/delete/{{ user.id }}"
-                    onsubmit="return confirm('Delete {{ user.username }}? This cannot be undone.');">
+              <form method="POST" action="/admin/delete/{{ user.id }}"
+                    onsubmit="return confirm('Delete {{ user.username }}? Cannot be undone.');">
                 <button type="submit" class="delete-btn">🗑 Delete</button>
               </form>
               {% else %}
@@ -76,13 +74,107 @@
             </td>
           </tr>
           {% else %}
-          <tr>
-            <td colspan="6" class="table-empty">No users yet.</td>
-          </tr>
+          <tr><td colspan="6" class="table-empty">No users yet.</td></tr>
           {% endfor %}
         </tbody>
       </table>
     </div>
+    {% endif %}
+
+    <!-- ───── COMMENTS TAB ───── -->
+    {% if tab == 'comments' %}
+    <div class="admin-table-wrap">
+      <table class="admin-table">
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>User</th>
+            <th>Comment</th>
+            <th>Article</th>
+            <th>Date</th>
+            <th>Action</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for c in comments %}
+          <tr>
+            <td class="td-id">{{ c.id }}</td>
+            <td class="td-username"><strong>{{ c.username }}</strong></td>
+            <td class="td-comment-body">{{ c.body }}</td>
+            <td class="td-article-title">
+              {% if c.article_url %}
+              <a href="{{ c.article_url }}" target="_blank" rel="noopener"
+                 style="color:var(--accent);text-decoration:none;font-size:.8rem;">
+                {{ (c.article_title or c.article_url)[:60] }}{% if (c.article_title or c.article_url)|length > 60 %}…{% endif %}
+              </a>
+              {% else %}—{% endif %}
+            </td>
+            <td class="td-date">{{ c.created_at[:16] if c.created_at else '—' }}</td>
+            <td>
+              <form method="POST" action="/admin/comments/{{ c.id }}/delete"
+                    onsubmit="return confirm('Delete this comment?');">
+                <button type="submit" class="delete-btn">🗑 Delete</button>
+              </form>
+            </td>
+          </tr>
+          {% else %}
+          <tr><td colspan="6" class="table-empty">No comments yet.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% endif %}
+
+    <!-- ───── NEWSLETTER TAB ───── -->
+    {% if tab == 'newsletter' %}
+    <div class="newsletter-admin-actions">
+      <div class="newsletter-send-card">
+        <div>
+          <h3 class="newsletter-send-title">📤 Send Trending Digest</h3>
+          <p class="newsletter-send-desc">
+            Sends the top 5 most-clicked articles to all
+            <strong>{{ subscriber_count }}</strong> subscriber{{ 's' if subscriber_count != 1 else '' }}.
+          </p>
+        </div>
+        <form method="POST" action="/admin/newsletter/send"
+              onsubmit="return confirm('Send digest to {{ subscriber_count }} subscriber(s) now?');">
+          <button type="submit" class="newsletter-send-btn"
+                  {% if subscriber_count == 0 %}disabled title="No subscribers yet"{% endif %}>
+            🚀 Send Digest Now
+          </button>
+        </form>
+      </div>
+    </div>
+
+    <div class="admin-table-wrap" style="margin-top:24px;">
+      <table class="admin-table">
+        <thead>
+          <tr>
+            <th>#</th><th>Name</th><th>Email</th><th>Subscribed</th><th>Action</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for s in subscribers %}
+          <tr>
+            <td class="td-id">{{ s.id }}</td>
+            <td class="td-username">{{ s.name or '—' }}</td>
+            <td class="td-email">{{ s.email }}</td>
+            <td class="td-date">{{ s.subscribed_at[:10] if s.subscribed_at else '—' }}</td>
+            <td>
+              <a href="/newsletter/unsubscribe/{{ s.token }}"
+                 onclick="return confirm('Remove {{ s.email }} from the list?')"
+                 class="delete-btn" style="text-decoration:none;display:inline-block;">
+                🗑 Remove
+              </a>
+            </td>
+          </tr>
+          {% else %}
+          <tr><td colspan="5" class="table-empty">No subscribers yet.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% endif %}
 
   </div>
 </main>

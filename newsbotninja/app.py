@@ -1,5 +1,6 @@
 import os
 import sqlite3
+import secrets as _secrets
 import requests
 from datetime import datetime
 from functools import wraps
@@ -65,6 +66,26 @@ def init_db():
             last_clicked TEXT    DEFAULT (datetime('now'))
         )
     """)
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS newsletter_subscribers (
+            id            INTEGER PRIMARY KEY AUTOINCREMENT,
+            email         TEXT    NOT NULL UNIQUE,
+            name          TEXT,
+            token         TEXT    NOT NULL UNIQUE,
+            subscribed_at TEXT    DEFAULT (datetime('now'))
+        )
+    """)
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS comments (
+            id            INTEGER PRIMARY KEY AUTOINCREMENT,
+            article_url   TEXT    NOT NULL,
+            article_title TEXT,
+            user_id       INTEGER,
+            username      TEXT    NOT NULL,
+            body          TEXT    NOT NULL,
+            created_at    TEXT    DEFAULT (datetime('now'))
+        )
+    """)
     conn.commit()
     conn.close()
 
@@ -100,6 +121,20 @@ def admin_required(f):
             return redirect(url_for("index"))
         return f(*args, **kwargs)
     return decorated
+
+# ── Token helper ─────────────────────────────────────────────────────────────
+def generate_token():
+    return _secrets.token_urlsafe(32)
+
+
+# ── Context processor (makes sub_count available in all templates) ────────────
+@app.context_processor
+def inject_globals():
+    conn = get_db()
+    sub_count = conn.execute("SELECT COUNT(*) FROM newsletter_subscribers").fetchone()[0]
+    conn.close()
+    return {"sub_count": sub_count}
+
 
 # ── Mail helper ───────────────────────────────────────────────────────────────
 def send_admin_notification(new_username, new_email):
@@ -372,18 +407,7 @@ def logout():
     return redirect(url_for("index"))
 
 
-# ── Admin routes ──────────────────────────────────────────────────────────────
-@app.route("/admin")
-@login_required
-@admin_required
-def admin():
-    conn  = get_db()
-    users = conn.execute("SELECT * FROM users ORDER BY created_at DESC").fetchall()
-    count = conn.execute("SELECT COUNT(*) FROM users").fetchone()[0]
-    conn.close()
-    return render_template("admin.html", users=users, user_count=count)
-
-
+# ── Admin: delete user ────────────────────────────────────────────────────────
 @app.route("/admin/delete/<int:user_id>", methods=["POST"])
 @login_required
 @admin_required
@@ -486,6 +510,291 @@ def api_weather():
         return jsonify({"temp": c["temp_C"], "desc": desc, "icon": icon, "city": city})
     except Exception:
         return jsonify({"error": "unavailable"})
+
+
+# ── Newsletter ────────────────────────────────────────────────────────────────
+def send_newsletter_digest(articles):
+    conn        = get_db()
+    subscribers = conn.execute("SELECT email, name, token FROM newsletter_subscribers").fetchall()
+    conn.close()
+    if not subscribers:
+        return 0, "No subscribers yet"
+    if not app.config.get("MAIL_USERNAME") or not app.config.get("MAIL_PASSWORD"):
+        return 0, "Email credentials not configured — add MAIL_USERNAME and MAIL_PASSWORD in Render env vars"
+
+    items_html = ""
+    for i, a in enumerate(articles[:5], 1):
+        title = (a.get("title") or "").split(" - ")[0]
+        desc  = (a.get("description") or "")[:120]
+        url   = a.get("url") or "#"
+        src   = (a.get("source") or {}).get("name", "")
+        items_html += f"""
+        <tr>
+          <td style="padding:16px 0;border-bottom:1px solid #1e2d45;">
+            <p style="color:#64748b;font-size:11px;margin:0 0 4px;">{i}. {src}</p>
+            <a href="{url}" style="color:#14b8a6;font-size:16px;font-weight:600;text-decoration:none;line-height:1.4;">{title}</a>
+            <p style="color:#94a3b8;font-size:13px;margin:6px 0 0;">{desc}{"…" if len(a.get("description",""))>120 else ""}</p>
+          </td>
+        </tr>"""
+
+    sent = 0
+    for sub in subscribers:
+        unsub_url = f"https://newsbotninja.onrender.com/newsletter/unsubscribe/{sub['token']}"
+        greeting  = f", {sub['name']}" if sub["name"] else ""
+        html_body = f"""<!DOCTYPE html>
+<html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+<body style="margin:0;padding:0;background:#0d1117;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#0d1117;padding:40px 20px;">
+    <tr><td align="center">
+      <table width="600" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%;">
+        <tr>
+          <td style="background:linear-gradient(135deg,#0f1923,#0a2436);padding:32px;border-radius:12px 12px 0 0;text-align:center;border-bottom:2px solid #14b8a6;">
+            <h1 style="color:#14b8a6;margin:0;font-size:28px;letter-spacing:-0.5px;">🥷 Newsbotninja</h1>
+            <p style="color:#64748b;margin:8px 0 0;font-size:14px;">Your daily trending digest</p>
+          </td>
+        </tr>
+        <tr>
+          <td style="background:#0f1923;padding:32px;border-radius:0 0 12px 12px;">
+            <h2 style="color:#f1f5f9;margin:0 0 24px;font-size:18px;">🔥 Trending Now{greeting}</h2>
+            <table width="100%" cellpadding="0" cellspacing="0">{items_html}</table>
+            <div style="text-align:center;margin-top:32px;">
+              <a href="https://newsbotninja.onrender.com"
+                 style="background:#14b8a6;color:#0d1117;padding:14px 32px;border-radius:50px;text-decoration:none;font-weight:700;font-size:14px;display:inline-block;">
+                Read All Stories →
+              </a>
+            </div>
+            <p style="color:#334155;font-size:12px;text-align:center;margin-top:32px;border-top:1px solid #1e2d45;padding-top:20px;">
+              You're receiving this because you subscribed to Newsbotninja.<br>
+              <a href="{unsub_url}" style="color:#475569;">Unsubscribe</a>
+            </p>
+          </td>
+        </tr>
+      </table>
+    </td></tr>
+  </table>
+</body></html>"""
+        try:
+            msg = Message(
+                subject="🔥 Trending on Newsbotninja today",
+                recipients=[sub["email"]],
+                html=html_body,
+            )
+            mail.send(msg)
+            sent += 1
+        except Exception as exc:
+            print(f"[NEWSLETTER] Failed → {sub['email']}: {exc}")
+    return sent, None
+
+
+@app.route("/newsletter/subscribe", methods=["POST"])
+def newsletter_subscribe():
+    if request.is_json:
+        data  = request.get_json(silent=True) or {}
+        email = (data.get("email") or "").strip().lower()
+        name  = (data.get("name")  or "").strip()
+    else:
+        email = (request.form.get("email") or "").strip().lower()
+        name  = (request.form.get("name")  or "").strip()
+
+    if not email or "@" not in email:
+        if request.is_json:
+            return jsonify({"error": "Valid email required"}), 400
+        flash("Please enter a valid email address.", "error")
+        return redirect(request.referrer or url_for("index"))
+
+    conn     = get_db()
+    existing = conn.execute(
+        "SELECT id FROM newsletter_subscribers WHERE email = ?", (email,)
+    ).fetchone()
+    if existing:
+        conn.close()
+        if request.is_json:
+            return jsonify({"ok": True, "message": "Already subscribed!"})
+        flash("You're already subscribed! 🎉", "success")
+        return redirect(request.referrer or url_for("index"))
+
+    token = generate_token()
+    conn.execute(
+        "INSERT INTO newsletter_subscribers (email, name, token) VALUES (?, ?, ?)",
+        (email, name, token)
+    )
+    conn.commit()
+    conn.close()
+
+    if request.is_json:
+        return jsonify({"ok": True, "message": "Subscribed! 🔥"})
+    flash(f"Subscribed! 🔥 Trending news will land in {email}", "success")
+    return redirect(request.referrer or url_for("index"))
+
+
+@app.route("/newsletter/unsubscribe/<token>")
+def newsletter_unsubscribe(token):
+    conn = get_db()
+    row  = conn.execute(
+        "SELECT email FROM newsletter_subscribers WHERE token = ?", (token,)
+    ).fetchone()
+    if row:
+        conn.execute("DELETE FROM newsletter_subscribers WHERE token = ?", (token,))
+        conn.commit()
+        flash("You've been unsubscribed from the Newsbotninja digest. 👋", "success")
+    else:
+        flash("That unsubscribe link is invalid or already used.", "error")
+    conn.close()
+    return redirect(url_for("index"))
+
+
+# ── Comments ──────────────────────────────────────────────────────────────────
+@app.route("/api/comments", methods=["GET", "POST"])
+def api_comments():
+    if request.method == "POST":
+        if not current_user.is_authenticated:
+            return jsonify({"error": "Login required to comment"}), 401
+        data          = request.get_json(silent=True) or {}
+        article_url   = (data.get("url")   or "").strip()
+        article_title = (data.get("title") or "").strip()
+        body          = (data.get("body")  or "").strip()
+        if not article_url or not body:
+            return jsonify({"error": "url and body are required"}), 400
+        if len(body) > 1000:
+            return jsonify({"error": "Comment too long (max 1000 chars)"}), 400
+        conn = get_db()
+        conn.execute("""
+            INSERT INTO comments (article_url, article_title, user_id, username, body)
+            VALUES (?, ?, ?, ?, ?)
+        """, (article_url, article_title, current_user.id, current_user.username, body))
+        conn.commit()
+        cid = conn.execute("SELECT last_insert_rowid()").fetchone()[0]
+        conn.close()
+        return jsonify({
+            "ok": True,
+            "comment": {
+                "id": cid,
+                "username": current_user.username,
+                "body": body,
+                "created_at": datetime.utcnow().strftime("%Y-%m-%d %H:%M"),
+            }
+        })
+    # GET
+    url   = request.args.get("url", "").strip()
+    limit = request.args.get("limit", 30, type=int)
+    if not url:
+        return jsonify({"error": "url required"}), 400
+    conn = get_db()
+    rows = conn.execute("""
+        SELECT id, username, body, created_at FROM comments
+        WHERE article_url = ? ORDER BY created_at ASC LIMIT ?
+    """, (url, limit)).fetchall()
+    conn.close()
+    return jsonify([
+        {"id": r["id"], "username": r["username"], "body": r["body"],
+         "created_at": r["created_at"][:16]}
+        for r in rows
+    ])
+
+
+@app.route("/api/comments/counts")
+def api_comment_counts():
+    """Batch comment counts for up to 30 article URLs."""
+    urls = request.args.getlist("url")[:30]
+    if not urls:
+        return jsonify({})
+    conn   = get_db()
+    counts = {}
+    for url in urls:
+        row = conn.execute(
+            "SELECT COUNT(*) as c FROM comments WHERE article_url = ?", (url,)
+        ).fetchone()
+        counts[url] = row["c"] if row else 0
+    conn.close()
+    return jsonify(counts)
+
+
+# ── Updated admin routes ───────────────────────────────────────────────────────
+@app.route("/admin")
+@login_required
+@admin_required
+def admin():
+    conn        = get_db()
+    users       = conn.execute("SELECT * FROM users ORDER BY created_at DESC").fetchall()
+    user_count  = conn.execute("SELECT COUNT(*) FROM users").fetchone()[0]
+    sub_count_v = conn.execute("SELECT COUNT(*) FROM newsletter_subscribers").fetchone()[0]
+    cmt_count   = conn.execute("SELECT COUNT(*) FROM comments").fetchone()[0]
+    conn.close()
+    return render_template("admin.html", tab="users",
+                           users=users, user_count=user_count,
+                           subscriber_count=sub_count_v, comment_count=cmt_count,
+                           comments=[], subscribers=[])
+
+
+@app.route("/admin/comments")
+@login_required
+@admin_required
+def admin_comments():
+    conn     = get_db()
+    comments = conn.execute("""
+        SELECT id, article_url, article_title, username, body, created_at
+        FROM comments ORDER BY created_at DESC LIMIT 300
+    """).fetchall()
+    cmt_count  = conn.execute("SELECT COUNT(*) FROM comments").fetchone()[0]
+    sub_count_v= conn.execute("SELECT COUNT(*) FROM newsletter_subscribers").fetchone()[0]
+    user_count = conn.execute("SELECT COUNT(*) FROM users").fetchone()[0]
+    conn.close()
+    return render_template("admin.html", tab="comments",
+                           comments=comments, comment_count=cmt_count,
+                           subscriber_count=sub_count_v, user_count=user_count,
+                           users=[], subscribers=[])
+
+
+@app.route("/admin/comments/<int:cid>/delete", methods=["POST"])
+@login_required
+@admin_required
+def admin_delete_comment(cid):
+    conn = get_db()
+    conn.execute("DELETE FROM comments WHERE id = ?", (cid,))
+    conn.commit()
+    conn.close()
+    flash("Comment deleted.", "success")
+    return redirect(url_for("admin_comments"))
+
+
+@app.route("/admin/newsletter")
+@login_required
+@admin_required
+def admin_newsletter():
+    conn        = get_db()
+    subscribers = conn.execute(
+        "SELECT * FROM newsletter_subscribers ORDER BY subscribed_at DESC"
+    ).fetchall()
+    sub_count_v = conn.execute("SELECT COUNT(*) FROM newsletter_subscribers").fetchone()[0]
+    cmt_count   = conn.execute("SELECT COUNT(*) FROM comments").fetchone()[0]
+    user_count  = conn.execute("SELECT COUNT(*) FROM users").fetchone()[0]
+    conn.close()
+    return render_template("admin.html", tab="newsletter",
+                           subscribers=subscribers, subscriber_count=sub_count_v,
+                           comment_count=cmt_count, user_count=user_count,
+                           users=[], comments=[])
+
+
+@app.route("/admin/newsletter/send", methods=["POST"])
+@login_required
+@admin_required
+def admin_newsletter_send():
+    conn     = get_db()
+    top_rows = conn.execute(
+        "SELECT url, title FROM article_clicks ORDER BY click_count DESC LIMIT 5"
+    ).fetchall()
+    conn.close()
+    if not top_rows:
+        flash("No trending articles tracked yet — readers need to click some stories first!", "error")
+        return redirect(url_for("admin_newsletter"))
+    articles = [{"title": r["title"], "url": r["url"],
+                 "description": "", "source": {"name": ""}} for r in top_rows]
+    sent, err = send_newsletter_digest(articles)
+    if err:
+        flash(f"Failed: {err}", "error")
+    else:
+        flash(f"✅ Digest sent to {sent} subscriber{'s' if sent != 1 else ''}!", "success")
+    return redirect(url_for("admin_newsletter"))
 
 
 # ── Demo download ─────────────────────────────────────────────────────────────

@@ -146,14 +146,77 @@
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
                   </button>
                 </div>
+
+                <button class="comment-toggle-btn"
+                        data-url="{{ article.url }}"
+                        data-title="{{ article.title | replace('"', '&quot;') }}"
+                        data-section="cs-{{ loop.index }}"
+                        onclick="toggleComments(this)">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                       style="width:14px;height:14px;flex-shrink:0">
+                    <path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/>
+                  </svg>
+                  <span id="cc-{{ loop.index }}">Comments</span>
+                </button>
+
               </div>
+
+              <div class="comment-section" id="cs-{{ loop.index }}"
+                   data-url="{{ article.url }}" data-loaded="false">
+                <div class="comment-list" id="cl-{{ loop.index }}"></div>
+                {% if current_user.is_authenticated %}
+                <form class="comment-form"
+                      data-url="{{ article.url }}"
+                      data-title="{{ article.title | replace('"', '&quot;') }}"
+                      data-idx="{{ loop.index }}"
+                      onsubmit="postComment(event, this)">
+                  <div class="comment-form-row">
+                    <textarea class="comment-input" placeholder="Share your thoughts…"
+                              maxlength="1000" rows="2" required></textarea>
+                    <button type="submit" class="comment-submit-btn">Post</button>
+                  </div>
+                </form>
+                {% else %}
+                <p class="comment-login-cta">
+                  <a href="/login">Log in</a> or <a href="/register">sign up</a> to join the conversation
+                </p>
+                {% endif %}
+              </div>
+
             </article>
           {% endfor %}
         </div>
 
+        <!-- Newsletter subscribe bar -->
+        <div class="newsletter-bar" id="newsletterBar">
+          <div class="newsletter-bar__inner">
+            <div class="newsletter-bar__copy">
+              <span class="newsletter-bar__icon">📨</span>
+              <div>
+                <strong>Get trending news daily</strong>
+                {% if sub_count > 0 %}
+                <span>Join {{ sub_count }} reader{{ 's' if sub_count != 1 else '' }} — delivered to your inbox</span>
+                {% else %}
+                <span>Be the first — hot stories straight to your phone</span>
+                {% endif %}
+              </div>
+            </div>
+            <form id="nlForm" class="newsletter-bar__form" onsubmit="nlSubscribe(event)">
+              <input type="email" id="nlEmail" placeholder="your@email.com" required class="newsletter-bar__input"/>
+              <button type="submit" class="newsletter-bar__btn" id="nlBtn">Subscribe 🔥</button>
+            </form>
+            <button class="newsletter-bar__close" onclick="dismissNewsletter()" aria-label="Dismiss">✕</button>
+          </div>
+        </div>
+
         {% if active_category != 'Search' %}
-        <div class="load-more-wrap" id="loadMoreWrap">
-          <button class="load-more-btn" id="loadMoreBtn">Load More Stories</button>
+        <div id="scrollSentinel" class="scroll-sentinel">
+          <div id="scrollSpinner" class="scroll-spinner" style="display:none">
+            <div class="spinner-dot"></div>
+            <div class="spinner-dot"></div>
+            <div class="spinner-dot"></div>
+          </div>
+          <p id="scrollEnd" class="scroll-end" style="display:none">You're all caught up 🥷</p>
         </div>
         {% endif %}
 
@@ -164,6 +227,8 @@
 
 {% block scripts %}
 <script>
+  window.isLoggedIn = {{ 'true' if current_user.is_authenticated else 'false' }};
+
   // ── Last updated timestamp ────────────────────────────────────────────────
   function timeAgo(date) {
     const secs = Math.floor((Date.now() - date) / 1000);
@@ -238,22 +303,36 @@
     </article>`;
   }
 
-  // ── Card builder (for Load More) ─────────────────────────────────────────
+  // ── Card builder (for infinite scroll) ──────────────────────────────────
+  let cardIdx = {{ articles | length if articles else 0 }};
+
   function makeCard(a, trendingUrls) {
-    const title   = (a.title  || 'No title').split(' - ')[0];
-    const desc    = a.description || a.title || '';
-    const source  = a.source?.name || '';
-    const date    = (a.publishedAt || '').slice(0, 10);
-    const img     = a.urlToImage
+    cardIdx++;
+    const idx    = cardIdx;
+    const title  = (a.title || 'No title').split(' - ')[0];
+    const desc   = a.description || a.title || '';
+    const source = a.source?.name || '';
+    const date   = (a.publishedAt || '').slice(0, 10);
+    const img    = a.urlToImage
       ? `<img class="card__image" src="${a.urlToImage}" alt="${title.replace(/"/g,'')}"
              onerror="this.onerror=null;this.src='https://placehold.co/800x400/1a2236/14b8a6?text=🥷';">`
       : `<div class="card__image-placeholder">🥷</div>`;
-    const waText  = encodeURIComponent(title + '\n' + a.url);
-    const twText  = encodeURIComponent(title);
-    const twUrl   = encodeURIComponent(a.url);
-    const hot     = trendingUrls && trendingUrls.has(a.url);
+    const waText = encodeURIComponent(title + '\n' + a.url);
+    const twText = encodeURIComponent(title);
+    const twUrl  = encodeURIComponent(a.url);
+    const hot    = trendingUrls && trendingUrls.has(a.url);
+    const safeUrl   = a.url.replace(/"/g, '&quot;');
+    const safeTitle = title.replace(/"/g, '');
+    const commentForm = window.isLoggedIn
+      ? `<form class="comment-form" data-url="${safeUrl}" data-title="${safeTitle}" data-idx="${idx}" onsubmit="postComment(event,this)">
+           <div class="comment-form-row">
+             <textarea class="comment-input" placeholder="Share your thoughts…" maxlength="1000" rows="2" required></textarea>
+             <button type="submit" class="comment-submit-btn">Post</button>
+           </div>
+         </form>`
+      : `<p class="comment-login-cta"><a href="/login">Log in</a> or <a href="/register">sign up</a> to comment</p>`;
 
-    return `<article class="card" data-url="${a.url}">
+    return `<article class="card" data-url="${safeUrl}">
       ${img}
       <div class="card__body">
         <div class="card__meta">
@@ -263,84 +342,235 @@
         </div>
         <h2 class="card__title">${title}</h2>
         <p class="card__description">${desc}</p>
-        <a class="card__btn" href="${a.url}" target="_blank" rel="noopener noreferrer"
-           data-track-url="${a.url}" data-track-title="${title.replace(/"/g,'')}">Read More →</a>
+        <a class="card__btn" href="${safeUrl}" target="_blank" rel="noopener noreferrer"
+           data-track-url="${safeUrl}" data-track-title="${safeTitle}">Read More →</a>
         <div class="share-bar">
-          <a class="share-btn share-btn--wa"
-             href="https://wa.me/?text=${waText}" target="_blank" rel="noopener" title="WhatsApp">
+          <a class="share-btn share-btn--wa" href="https://wa.me/?text=${waText}" target="_blank" rel="noopener" title="WhatsApp">
             <svg viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/><path d="M12 0C5.373 0 0 5.373 0 12c0 2.123.554 4.122 1.523 5.863L0 24l6.302-1.499A11.946 11.946 0 0012 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 21.882a9.868 9.868 0 01-5.032-1.378l-.36-.214-3.742.889.939-3.648-.234-.374A9.867 9.867 0 012.118 12C2.118 6.523 6.523 2.118 12 2.118c5.478 0 9.882 4.405 9.882 9.882 0 5.478-4.404 9.882-9.882 9.882z"/></svg>
           </a>
-          <a class="share-btn share-btn--tw"
-             href="https://twitter.com/intent/tweet?text=${twText}&url=${twUrl}"
-             target="_blank" rel="noopener" title="X / Twitter">
+          <a class="share-btn share-btn--tw" href="https://twitter.com/intent/tweet?text=${twText}&url=${twUrl}" target="_blank" rel="noopener" title="X">
             <svg viewBox="0 0 24 24" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>
           </a>
-          <button class="share-btn share-btn--copy"
-                  onclick="copyLink('${a.url}')" title="Copy link">
+          <button class="share-btn share-btn--copy" onclick="copyLink('${safeUrl}')" title="Copy link">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
           </button>
         </div>
+        <button class="comment-toggle-btn" data-url="${safeUrl}" data-title="${safeTitle}"
+                data-section="cs-${idx}" onclick="toggleComments(this)">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+               style="width:14px;height:14px;flex-shrink:0">
+            <path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/>
+          </svg>
+          <span id="cc-${idx}">Comments</span>
+        </button>
+      </div>
+      <div class="comment-section" id="cs-${idx}" data-url="${safeUrl}" data-loaded="false">
+        <div class="comment-list" id="cl-${idx}"></div>
+        ${commentForm}
       </div>
     </article>`;
   }
 
-  // ── Load More ─────────────────────────────────────────────────────────────
-  let currentPage   = 1;
-  let loadingMore   = false;
-  let trendingUrls  = new Set();
-  const grid        = document.getElementById('newsGrid');
-  const loadMoreBtn = document.getElementById('loadMoreBtn');
+  // ── Infinite scroll ───────────────────────────────────────────────────────
+  let currentPage  = 1;
+  let loadingMore  = false;
+  let noMorePages  = false;
+  let trendingUrls = new Set();
+  const grid       = document.getElementById('newsGrid');
+  const sentinel   = document.getElementById('scrollSentinel');
+  const spinner    = document.getElementById('scrollSpinner');
+  const scrollEnd  = document.getElementById('scrollEnd');
 
-  // Pre-fetch trending so Load More cards get badges too
   fetch('/api/trending?limit=50')
     .then(r => r.json())
     .then(data => { trendingUrls = new Set(data.filter(d => d.count >= 3).map(d => d.url)); })
     .catch(() => {});
 
-  if (loadMoreBtn) {
-    loadMoreBtn.addEventListener('click', async () => {
-      if (loadingMore) return;
-      loadingMore = true;
-      loadMoreBtn.textContent = 'Loading…';
-      loadMoreBtn.disabled    = true;
+  async function loadMoreArticles() {
+    if (loadingMore || noMorePages || !grid) return;
+    loadingMore = true;
+    if (spinner) spinner.style.display = 'flex';
 
-      const skeletonIds = [0, 1, 2].map(i => {
-        const div  = document.createElement('div');
-        div.innerHTML = makeSkeleton();
-        const card = div.firstElementChild;
-        card.id    = `skel-${i}`;
-        grid.appendChild(card);
-        return card.id;
-      });
-
-      try {
-        currentPage++;
-        const res  = await fetch(`/api/news?page=${currentPage}&category=${encodeURIComponent(category)}`);
-        const data = await res.json();
-
-        skeletonIds.forEach(id => document.getElementById(id)?.remove());
-
-        if (!data.articles?.length || data.error) {
-          document.getElementById('loadMoreWrap').remove();
-          showToast('No more stories to load.');
-        } else {
-          data.articles.forEach(a => {
-            const div = document.createElement('div');
-            div.innerHTML = makeCard(a, trendingUrls);
-            grid.appendChild(div.firstElementChild);
-          });
-          loadMoreBtn.textContent = 'Load More Stories';
-          loadMoreBtn.disabled    = false;
-          loadingMore = false;
-        }
-      } catch (e) {
-        skeletonIds.forEach(id => document.getElementById(id)?.remove());
-        loadMoreBtn.textContent = 'Load More Stories';
-        loadMoreBtn.disabled    = false;
-        loadingMore = false;
-        showToast('Failed to load more stories.');
-      }
+    const skels = [0,1,2].map(i => {
+      const div  = document.createElement('div');
+      div.innerHTML = makeSkeleton();
+      const card = div.firstElementChild;
+      card.id = `skel-${i}`;
+      grid.appendChild(card);
+      return card.id;
     });
+
+    try {
+      currentPage++;
+      const res  = await fetch(`/api/news?page=${currentPage}&category=${encodeURIComponent(category)}`);
+      const data = await res.json();
+      skels.forEach(id => document.getElementById(id)?.remove());
+      if (!data.articles?.length || data.error) {
+        noMorePages = true;
+        if (spinner)   spinner.style.display = 'none';
+        if (scrollEnd) scrollEnd.style.display = 'block';
+      } else {
+        data.articles.forEach(a => {
+          const div = document.createElement('div');
+          div.innerHTML = makeCard(a, trendingUrls);
+          grid.appendChild(div.firstElementChild);
+        });
+        loadCommentCounts();
+        if (spinner) spinner.style.display = 'none';
+      }
+    } catch(e) {
+      skels.forEach(id => document.getElementById(id)?.remove());
+      if (spinner) spinner.style.display = 'none';
+    }
+    loadingMore = false;
+  }
+
+  if (sentinel) {
+    new IntersectionObserver(
+      entries => { if (entries[0].isIntersecting) loadMoreArticles(); },
+      { rootMargin: '300px' }
+    ).observe(sentinel);
+  }
+
+  // ── Comments ───────────────────────────────────────────────────────────────
+  function toggleComments(btn) {
+    const section = document.getElementById(btn.dataset.section);
+    if (!section) return;
+    const open = section.classList.toggle('open');
+    btn.classList.toggle('active', open);
+    if (open && section.dataset.loaded === 'false') {
+      loadComments(section, btn.dataset.section.replace('cs-',''));
+    }
+  }
+
+  async function loadComments(section, idx) {
+    section.dataset.loaded = 'true';
+    const url    = section.dataset.url;
+    const listEl = document.getElementById(`cl-${idx}`);
+    if (!listEl) return;
+    listEl.innerHTML = '<div class="comment-loading">Loading…</div>';
+    try {
+      const res  = await fetch(`/api/comments?url=${encodeURIComponent(url)}`);
+      const data = await res.json();
+      if (!data.length) {
+        listEl.innerHTML = '<p class="comment-empty">No comments yet — be the first!</p>';
+      } else {
+        listEl.innerHTML = data.map(renderComment).join('');
+        const countEl = document.getElementById(`cc-${idx}`);
+        if (countEl) countEl.textContent = `${data.length} comment${data.length !== 1 ? 's' : ''}`;
+      }
+    } catch(e) {
+      listEl.innerHTML = '<p class="comment-empty">Could not load comments.</p>';
+    }
+  }
+
+  function renderComment(c) {
+    const av = c.username.charAt(0).toUpperCase();
+    return `<div class="comment-item">
+      <div class="comment-avatar">${av}</div>
+      <div class="comment-content">
+        <div class="comment-header">
+          <span class="comment-username">${h(c.username)}</span>
+          <span class="comment-date">${c.created_at}</span>
+        </div>
+        <p class="comment-body">${h(c.body)}</p>
+      </div>
+    </div>`;
+  }
+
+  function h(s) {
+    return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;')
+                    .replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+  }
+
+  async function postComment(e, form) {
+    e.preventDefault();
+    const url    = form.dataset.url;
+    const title  = form.dataset.title;
+    const idx    = form.dataset.idx;
+    const ta     = form.querySelector('.comment-input');
+    const btn    = form.querySelector('.comment-submit-btn');
+    const body   = ta.value.trim();
+    if (!body) return;
+    btn.disabled = true; btn.textContent = '…';
+    try {
+      const res  = await fetch('/api/comments', {
+        method: 'POST', headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({url, title, body}),
+      });
+      const data = await res.json();
+      if (!res.ok) { showToast(data.error || 'Could not post'); return; }
+      ta.value = '';
+      const listEl = document.getElementById(`cl-${idx}`);
+      if (listEl) {
+        listEl.querySelector('.comment-empty')?.remove();
+        listEl.insertAdjacentHTML('beforeend', renderComment(data.comment));
+        listEl.lastElementChild.scrollIntoView({behavior:'smooth', block:'nearest'});
+        const n = listEl.querySelectorAll('.comment-item').length;
+        const countEl = document.getElementById(`cc-${idx}`);
+        if (countEl) countEl.textContent = `${n} comment${n !== 1 ? 's' : ''}`;
+      }
+    } catch(err) { showToast('Failed to post comment.'); }
+    btn.disabled = false; btn.textContent = 'Post';
+  }
+
+  function loadCommentCounts() {
+    const cards = document.querySelectorAll('.card[data-url]');
+    const urls  = Array.from(new Set(Array.from(cards).map(c => c.dataset.url).filter(Boolean))).slice(0,30);
+    if (!urls.length) return;
+    fetch('/api/comments/counts?' + urls.map(u => `url=${encodeURIComponent(u)}`).join('&'))
+      .then(r => r.json())
+      .then(counts => {
+        cards.forEach(card => {
+          const count   = counts[card.dataset.url];
+          if (!count) return;
+          const section = card.querySelector('.comment-section');
+          if (!section) return;
+          const idx     = section.id.replace('cs-', '');
+          const countEl = document.getElementById(`cc-${idx}`);
+          if (countEl) countEl.textContent = `${count} comment${count !== 1 ? 's' : ''}`;
+        });
+      }).catch(() => {});
+  }
+  loadCommentCounts();
+
+  // ── Newsletter ─────────────────────────────────────────────────────────────
+  async function nlSubscribe(e) {
+    e.preventDefault();
+    const email = document.getElementById('nlEmail').value.trim();
+    const btn   = document.getElementById('nlBtn');
+    if (!email) return;
+    btn.disabled = true; btn.textContent = '…';
+    try {
+      const res  = await fetch('/newsletter/subscribe', {
+        method: 'POST', headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({email}),
+      });
+      const data = await res.json();
+      if (data.ok) {
+        const bar = document.getElementById('newsletterBar');
+        if (bar) bar.innerHTML = `<div class="newsletter-bar__inner newsletter-bar__success">
+          🔥 You're subscribed! Trending news is heading to <strong>${h(email)}</strong>
+        </div>`;
+        localStorage.setItem('nlDismissed','1');
+      } else {
+        showToast(data.error || 'Could not subscribe.'); 
+        btn.disabled = false; btn.textContent = 'Subscribe 🔥';
+      }
+    } catch(err) { 
+      showToast('Network error — try again');
+      btn.disabled = false; btn.textContent = 'Subscribe 🔥';
+    }
+  }
+
+  function dismissNewsletter() {
+    const bar = document.getElementById('newsletterBar');
+    if (bar) bar.style.display = 'none';
+    localStorage.setItem('nlDismissed','1');
+  }
+  if (localStorage.getItem('nlDismissed')) {
+    const bar = document.getElementById('newsletterBar');
+    if (bar) bar.style.display = 'none';
   }
 </script>
 {% endblock %}
