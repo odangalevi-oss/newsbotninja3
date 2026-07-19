@@ -57,6 +57,14 @@ def init_db():
             created_at    TEXT    DEFAULT (datetime('now'))
         )
     """)
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS article_clicks (
+            url          TEXT PRIMARY KEY,
+            title        TEXT,
+            click_count  INTEGER NOT NULL DEFAULT 0,
+            last_clicked TEXT    DEFAULT (datetime('now'))
+        )
+    """)
     conn.commit()
     conn.close()
 
@@ -235,13 +243,45 @@ def science():
 
 @app.route("/search")
 def search():
-    query = request.args.get("q", "").strip()
+    query    = request.args.get("q", "").strip()
+    sort_by  = request.args.get("sortBy", "publishedAt")
+    date_range = request.args.get("dateRange", "")
+    category   = request.args.get("category", "")
+
     if not query:
-        return index()
-    articles, error = fetch_articles(
-        "everything", {"q": query, "language": "en", "sortBy": "publishedAt", "pageSize": 10}
+        return redirect(url_for("index"))
+
+    if sort_by not in ("publishedAt", "relevancy", "popularity"):
+        sort_by = "publishedAt"
+
+    from datetime import timedelta
+    params = {
+        "q":        f"{query} {category}".strip() if category else query,
+        "language": "en",
+        "sortBy":   sort_by,
+        "pageSize": 20,
+    }
+
+    if date_range == "today":
+        params["from"] = (datetime.utcnow() - timedelta(days=1)).strftime("%Y-%m-%d")
+    elif date_range == "week":
+        params["from"] = (datetime.utcnow() - timedelta(days=7)).strftime("%Y-%m-%d")
+    elif date_range == "month":
+        params["from"] = (datetime.utcnow() - timedelta(days=30)).strftime("%Y-%m-%d")
+
+    articles, error = fetch_articles("everything", params)
+    return render_template(
+        "index.html",
+        articles=articles,
+        error=error,
+        active_category="Search",
+        category_slug="search",
+        ticker_headlines=[],
+        search_query=query,
+        search_sort=sort_by,
+        search_date=date_range,
+        search_category=category,
     )
-    return render_news_page(articles, error, "Search", "search", search_query=query)
 
 
 # ── Auth routes ───────────────────────────────────────────────────────────────
@@ -361,6 +401,46 @@ def admin_delete_user(user_id):
         flash("User not found.", "error")
     conn.close()
     return redirect(url_for("admin"))
+
+
+# ── Click tracking ────────────────────────────────────────────────────────────
+@app.route("/api/track", methods=["POST"])
+def track_click():
+    data  = request.get_json(silent=True) or {}
+    url   = (data.get("url") or "").strip()
+    title = (data.get("title") or "").strip()
+    if not url:
+        return jsonify({"error": "url required"}), 400
+    conn = get_db()
+    conn.execute("""
+        INSERT INTO article_clicks (url, title, click_count, last_clicked)
+        VALUES (?, ?, 1, datetime('now'))
+        ON CONFLICT(url) DO UPDATE SET
+            click_count  = click_count + 1,
+            last_clicked = datetime('now'),
+            title        = excluded.title
+    """, (url, title))
+    conn.commit()
+    row = conn.execute(
+        "SELECT click_count FROM article_clicks WHERE url = ?", (url,)
+    ).fetchone()
+    conn.close()
+    return jsonify({"ok": True, "count": row["click_count"] if row else 1})
+
+
+@app.route("/api/trending")
+def api_trending():
+    limit = request.args.get("limit", 30, type=int)
+    conn  = get_db()
+    rows  = conn.execute(
+        "SELECT url, title, click_count FROM article_clicks ORDER BY click_count DESC LIMIT ?",
+        (limit,)
+    ).fetchall()
+    conn.close()
+    return jsonify([
+        {"url": r["url"], "title": r["title"], "count": r["click_count"]}
+        for r in rows
+    ])
 
 
 # ── JSON API ──────────────────────────────────────────────────────────────────

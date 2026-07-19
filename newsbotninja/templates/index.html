@@ -32,7 +32,54 @@
       {% if search_query %}
         <p class="search-label">
           Results for "<span>{{ search_query }}</span>"
+          {% if articles %}<span class="search-count">({{ articles|length }} stories)</span>{% endif %}
         </p>
+
+        <!-- Search filters -->
+        <form class="search-filters" method="get" action="/search">
+          <input type="hidden" name="q" value="{{ search_query }}"/>
+
+          <div class="filter-group">
+            <label class="filter-label">Sort</label>
+            <div class="filter-pills">
+              {% for val, label in [('publishedAt','Latest'),('relevancy','Relevant'),('popularity','Popular')] %}
+                <button type="submit" name="sortBy" value="{{ val }}"
+                        class="filter-pill {% if (search_sort or 'publishedAt') == val %}active{% endif %}">
+                  {{ label }}
+                </button>
+              {% endfor %}
+            </div>
+          </div>
+
+          <div class="filter-group">
+            <label class="filter-label">Date</label>
+            <div class="filter-pills">
+              {% for val, label in [('','Any time'),('today','Today'),('week','This week'),('month','This month')] %}
+                <button type="submit" name="dateRange" value="{{ val }}"
+                        class="filter-pill {% if (search_date or '') == val %}active{% endif %}">
+                  {{ label }}
+                </button>
+              {% endfor %}
+            </div>
+          </div>
+
+          <div class="filter-group">
+            <label class="filter-label">Topic</label>
+            <div class="filter-pills">
+              {% for val, label in [('','All'),('kenya','Kenya'),('technology','Tech'),('business','Business'),('sports','Sports'),('health','Health'),('science','Science')] %}
+                <button type="submit" name="category" value="{{ val }}"
+                        class="filter-pill {% if (search_category or '') == val %}active{% endif %}">
+                  {{ label }}
+                </button>
+              {% endfor %}
+            </div>
+          </div>
+
+          <!-- keep other active filters when changing one -->
+          {% if search_sort %}<input type="hidden" name="sortBy" value="{{ search_sort }}"/>{% endif %}
+          {% if search_date %}<input type="hidden" name="dateRange" value="{{ search_date }}"/>{% endif %}
+          {% if search_category %}<input type="hidden" name="category" value="{{ search_category }}"/>{% endif %}
+        </form>
       {% endif %}
 
       {% if error %}
@@ -49,7 +96,7 @@
 
         <div class="news-grid" id="newsGrid">
           {% for article in articles %}
-            <article class="card">
+            <article class="card" data-url="{{ article.url }}">
               {% if article.urlToImage %}
                 <img class="card__image" src="{{ article.urlToImage }}"
                      alt="{{ article.title }}"
@@ -66,6 +113,7 @@
                   {% if article.publishedAt %}
                     <span class="card__date">{{ article.publishedAt[:10] }}</span>
                   {% endif %}
+                  <span class="trending-badge" style="display:none">🔥 Trending</span>
                 </div>
 
                 <h2 class="card__title">
@@ -76,12 +124,15 @@
                   {{ article.description or article.title or '' }}
                 </p>
 
-                <a class="card__btn" href="{{ article.url }}"
-                   target="_blank" rel="noopener noreferrer">Read More →</a>
+                <a class="card__btn"
+                   href="{{ article.url }}"
+                   target="_blank" rel="noopener noreferrer"
+                   data-track-url="{{ article.url }}"
+                   data-track-title="{{ article.title | replace('"', '&quot;') }}">Read More →</a>
 
                 <div class="share-bar">
                   <a class="share-btn share-btn--wa"
-                     href="https://wa.me/?text={{ (article.title + ' ' + article.url) | urlencode }}"
+                     href="https://wa.me/?text={{ (article.title ~ '%0A' ~ article.url) | urlencode }}"
                      target="_blank" rel="noopener" title="Share on WhatsApp">
                     <svg viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/><path d="M12 0C5.373 0 0 5.373 0 12c0 2.123.554 4.122 1.523 5.863L0 24l6.302-1.499A11.946 11.946 0 0012 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 21.882a9.868 9.868 0 01-5.032-1.378l-.36-.214-3.742.889.939-3.648-.234-.374A9.867 9.867 0 012.118 12C2.118 6.523 6.523 2.118 12 2.118c5.478 0 9.882 4.405 9.882 9.882 0 5.478-4.404 9.882-9.882 9.882z"/></svg>
                   </a>
@@ -113,7 +164,7 @@
 
 {% block scripts %}
 <script>
-  // Last updated timestamp
+  // ── Last updated timestamp ────────────────────────────────────────────────
   function timeAgo(date) {
     const secs = Math.floor((Date.now() - date) / 1000);
     if (secs < 60)   return 'Updated just now';
@@ -124,7 +175,39 @@
   const lastUpdEl = document.getElementById('lastUpdated');
   setInterval(() => { lastUpdEl.textContent = timeAgo(loadedAt); }, 60000);
 
-  // Auto-refresh (every 5 min)
+  // ── Click tracking ────────────────────────────────────────────────────────
+  document.addEventListener('click', e => {
+    const btn = e.target.closest('[data-track-url]');
+    if (!btn) return;
+    const url   = btn.dataset.trackUrl;
+    const title = btn.dataset.trackTitle || '';
+    fetch('/api/track', {
+      method:    'POST',
+      headers:   { 'Content-Type': 'application/json' },
+      body:      JSON.stringify({ url, title }),
+      keepalive: true,
+    }).catch(() => {});
+  });
+
+  // ── Trending badges ───────────────────────────────────────────────────────
+  fetch('/api/trending?limit=50')
+    .then(r => r.json())
+    .then(data => {
+      // Build a map of url → count for articles with 3+ clicks
+      const hot = new Map(
+        data.filter(d => d.count >= 3).map(d => [d.url, d.count])
+      );
+      if (!hot.size) return;
+      document.querySelectorAll('.card[data-url]').forEach(card => {
+        if (hot.has(card.dataset.url)) {
+          const badge = card.querySelector('.trending-badge');
+          if (badge) badge.style.display = '';
+        }
+      });
+    })
+    .catch(() => {});
+
+  // ── Auto-refresh (every 5 min) ────────────────────────────────────────────
   const firstTitle = document.querySelector('.card__title')?.textContent?.trim() || '';
   const category   = '{{ category_slug }}';
 
@@ -155,33 +238,36 @@
     </article>`;
   }
 
-  // Card builder
-  function makeCard(a) {
-    const title  = (a.title  || 'No title').split(' - ')[0];
-    const desc   = a.description || a.title || '';
-    const source = a.source?.name || '';
-    const date   = (a.publishedAt || '').slice(0, 10);
-    const img    = a.urlToImage
-      ? `<img class="card__image" src="${a.urlToImage}" alt="${title}"
+  // ── Card builder (for Load More) ─────────────────────────────────────────
+  function makeCard(a, trendingUrls) {
+    const title   = (a.title  || 'No title').split(' - ')[0];
+    const desc    = a.description || a.title || '';
+    const source  = a.source?.name || '';
+    const date    = (a.publishedAt || '').slice(0, 10);
+    const img     = a.urlToImage
+      ? `<img class="card__image" src="${a.urlToImage}" alt="${title.replace(/"/g,'')}"
              onerror="this.onerror=null;this.src='https://placehold.co/800x400/1a2236/14b8a6?text=🥷';">`
       : `<div class="card__image-placeholder">🥷</div>`;
-    const waUrl  = encodeURIComponent(title + ' ' + a.url);
-    const twText = encodeURIComponent(title);
-    const twUrl  = encodeURIComponent(a.url);
+    const waText  = encodeURIComponent(title + '\n' + a.url);
+    const twText  = encodeURIComponent(title);
+    const twUrl   = encodeURIComponent(a.url);
+    const hot     = trendingUrls && trendingUrls.has(a.url);
 
-    return `<article class="card">
+    return `<article class="card" data-url="${a.url}">
       ${img}
       <div class="card__body">
         <div class="card__meta">
           ${source ? `<span class="card__source">${source}</span>` : ''}
-          ${date   ? `<span class="card__date">${date}</span>`   : ''}
+          ${date   ? `<span class="card__date">${date}</span>` : ''}
+          ${hot    ? `<span class="trending-badge">🔥 Trending</span>` : '<span class="trending-badge" style="display:none">🔥 Trending</span>'}
         </div>
         <h2 class="card__title">${title}</h2>
         <p class="card__description">${desc}</p>
-        <a class="card__btn" href="${a.url}" target="_blank" rel="noopener noreferrer">Read More →</a>
+        <a class="card__btn" href="${a.url}" target="_blank" rel="noopener noreferrer"
+           data-track-url="${a.url}" data-track-title="${title.replace(/"/g,'')}">Read More →</a>
         <div class="share-bar">
           <a class="share-btn share-btn--wa"
-             href="https://wa.me/?text=${waUrl}" target="_blank" rel="noopener" title="WhatsApp">
+             href="https://wa.me/?text=${waText}" target="_blank" rel="noopener" title="WhatsApp">
             <svg viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/><path d="M12 0C5.373 0 0 5.373 0 12c0 2.123.554 4.122 1.523 5.863L0 24l6.302-1.499A11.946 11.946 0 0012 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 21.882a9.868 9.868 0 01-5.032-1.378l-.36-.214-3.742.889.939-3.648-.234-.374A9.867 9.867 0 012.118 12C2.118 6.523 6.523 2.118 12 2.118c5.478 0 9.882 4.405 9.882 9.882 0 5.478-4.404 9.882-9.882 9.882z"/></svg>
           </a>
           <a class="share-btn share-btn--tw"
@@ -198,11 +284,18 @@
     </article>`;
   }
 
-  // Load More
-  let currentPage = 1;
-  let loadingMore = false;
+  // ── Load More ─────────────────────────────────────────────────────────────
+  let currentPage   = 1;
+  let loadingMore   = false;
+  let trendingUrls  = new Set();
   const grid        = document.getElementById('newsGrid');
   const loadMoreBtn = document.getElementById('loadMoreBtn');
+
+  // Pre-fetch trending so Load More cards get badges too
+  fetch('/api/trending?limit=50')
+    .then(r => r.json())
+    .then(data => { trendingUrls = new Set(data.filter(d => d.count >= 3).map(d => d.url)); })
+    .catch(() => {});
 
   if (loadMoreBtn) {
     loadMoreBtn.addEventListener('click', async () => {
@@ -233,7 +326,7 @@
         } else {
           data.articles.forEach(a => {
             const div = document.createElement('div');
-            div.innerHTML = makeCard(a);
+            div.innerHTML = makeCard(a, trendingUrls);
             grid.appendChild(div.firstElementChild);
           });
           loadMoreBtn.textContent = 'Load More Stories';

@@ -582,6 +582,86 @@ footer .footer__author { color: var(--text-secondary); }
 .skeleton-line { height: 14px; margin-bottom: 10px; border-radius: 6px; }
 .skeleton-btn  { height: 36px; width: 100%; border-radius: var(--radius-sm); margin-top: 8px; }
 
+/* ── Trending badge ─────────────────────────────────────────────────────── */
+.trending-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 2px 9px;
+  border-radius: var(--radius-pill);
+  background: linear-gradient(135deg, rgba(251,146,60,.18), rgba(239,68,68,.18));
+  border: 1px solid rgba(251,146,60,.35);
+  color: #fb923c;
+  font-size: .68rem;
+  font-weight: 700;
+  letter-spacing: .03em;
+  animation: pulse-fire 2s ease-in-out infinite;
+}
+@keyframes pulse-fire {
+  0%,100% { opacity: 1; }
+  50%      { opacity: .7; }
+}
+
+/* ── Search filters ─────────────────────────────────────────────────────── */
+.search-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  margin: 16px 0 24px;
+  padding: 16px 20px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+}
+.filter-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.filter-label {
+  font-size: .72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .06em;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+.filter-pills {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.filter-pill {
+  padding: 5px 14px;
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--border);
+  background: var(--bg-input);
+  color: var(--text-secondary);
+  font-size: .78rem;
+  font-weight: 500;
+  font-family: inherit;
+  cursor: pointer;
+  transition: all var(--transition);
+  white-space: nowrap;
+}
+.filter-pill:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+.filter-pill.active {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--accent-text);
+  font-weight: 600;
+}
+.search-count {
+  font-size: .8rem;
+  color: var(--text-muted);
+  margin-left: 6px;
+  font-weight: 400;
+}
+
 /* ── Load More ───────────────────────────────────────────────────────────── */
 .load-more-wrap {
   display: flex;
