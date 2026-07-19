@@ -8,6 +8,89 @@ import base64 as _b64
 from datetime import datetime, timedelta
 from functools import wraps
 
+# ── Turso / libsql compatibility layer ───────────────────────────────────────
+# When TURSO_DATABASE_URL + TURSO_AUTH_TOKEN are set, all DB calls go to the
+# cloud.  Otherwise falls back to local SQLite — API is identical either way.
+
+class _DictRow:
+    """sqlite3.Row-compatible wrapper for libsql plain-tuple rows."""
+    __slots__ = ("_keys", "_data")
+
+    def __init__(self, description, row):
+        self._keys = [d[0] for d in description]
+        self._data = dict(zip(self._keys, row))
+
+    def __getitem__(self, key):
+        if isinstance(key, int):
+            return self._data[self._keys[key]]
+        return self._data[key]
+
+    def keys(self):
+        return self._keys
+
+    def __iter__(self):
+        return (self._data[k] for k in self._keys)
+
+    def __repr__(self):
+        return repr(self._data)
+
+
+class _LibsqlCursor:
+    """Cursor wrapper that yields _DictRow objects."""
+
+    def __init__(self, cur):
+        self._c = cur
+
+    @property
+    def description(self):
+        return self._c.description
+
+    def _wrap(self, row):
+        return None if row is None else _DictRow(self._c.description, row)
+
+    def fetchone(self):
+        return self._wrap(self._c.fetchone())
+
+    def fetchall(self):
+        desc = self._c.description
+        return [_DictRow(desc, r) for r in self._c.fetchall()]
+
+
+class _LibsqlConn:
+    """Connection wrapper: same API as sqlite3.Connection."""
+
+    def __init__(self, conn):
+        self._conn = conn
+        self.row_factory = None  # kept for drop-in compat; ignored internally
+
+    def execute(self, sql, params=()):
+        return _LibsqlCursor(self._conn.execute(sql, params))
+
+    def commit(self):
+        self._conn.commit()
+
+    def close(self):
+        self._conn.close()
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *_):
+        self.close()
+
+
+_TURSO_URL   = os.getenv("TURSO_DATABASE_URL")
+_TURSO_TOKEN = os.getenv("TURSO_AUTH_TOKEN")
+_USE_TURSO   = bool(_TURSO_URL and _TURSO_TOKEN)
+
+if _USE_TURSO:
+    try:
+        import libsql_experimental as _libsql
+        print(f"[DB] Using Turso cloud database → {_TURSO_URL}")
+    except ImportError:
+        _USE_TURSO = False
+        print("[DB] libsql-experimental not installed — falling back to SQLite")
+
 from flask import (
     Flask, render_template, request, jsonify,
     redirect, url_for, flash, send_from_directory
@@ -72,6 +155,8 @@ ADMIN_EMAIL  = "odangalevi@gmail.com"
 DB_PATH = os.getenv("DB_PATH", os.path.join(os.path.dirname(__file__), "users.db"))
 
 def get_db():
+    if _USE_TURSO:
+        return _LibsqlConn(_libsql.connect(_TURSO_URL, auth_token=_TURSO_TOKEN))
     conn = sqlite3.connect(DB_PATH)
     conn.row_factory = sqlite3.Row
     return conn
