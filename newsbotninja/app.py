@@ -2,7 +2,10 @@ import os
 import sqlite3
 import secrets as _secrets
 import requests
-from datetime import datetime
+import json as _json
+import threading
+import base64 as _b64
+from datetime import datetime, timedelta
 from functools import wraps
 
 from flask import (
@@ -27,6 +30,32 @@ app.config["MAIL_USERNAME"]       = os.getenv("MAIL_USERNAME")
 app.config["MAIL_PASSWORD"]       = os.getenv("MAIL_PASSWORD")
 app.config["MAIL_DEFAULT_SENDER"] = os.getenv("MAIL_USERNAME")
 mail = Mail(app)
+
+# ── VAPID keys (Web Push) ─────────────────────────────────────────────────────
+VAPID_KEYS_FILE = os.path.join(os.path.dirname(__file__), "vapid_keys.json")
+
+def get_vapid_keys():
+    if os.path.exists(VAPID_KEYS_FILE):
+        with open(VAPID_KEYS_FILE) as f:
+            return _json.load(f)
+    try:
+        from py_vapid import Vapid01
+        from cryptography.hazmat.primitives.serialization import Encoding, PublicFormat
+        v = Vapid01()
+        v.generate_keys()
+        priv_pem = v.private_pem().decode()
+        pub_bytes = v.public_key.public_bytes(Encoding.X962, PublicFormat.UncompressedPoint)
+        pub_b64 = _b64.urlsafe_b64encode(pub_bytes).rstrip(b"=").decode()
+        keys = {"private_pem": priv_pem, "public_key": pub_b64}
+        with open(VAPID_KEYS_FILE, "w") as f:
+            _json.dump(keys, f)
+        print("[VAPID] New VAPID keys generated and saved.")
+        return keys
+    except Exception as exc:
+        print(f"[VAPID] Key generation failed: {exc}")
+        return None
+
+VAPID_KEYS = get_vapid_keys()
 
 # ── Flask-Login ───────────────────────────────────────────────────────────────
 login_manager = LoginManager(app)
@@ -86,6 +115,19 @@ def init_db():
             created_at    TEXT    DEFAULT (datetime('now'))
         )
     """)
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS push_subscriptions (
+            id               INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id          INTEGER NOT NULL UNIQUE,
+            subscription_json TEXT   NOT NULL,
+            updated_at       TEXT    DEFAULT (datetime('now'))
+        )
+    """)
+    # Add last_digest_sent column to users if not present
+    try:
+        conn.execute("ALTER TABLE users ADD COLUMN last_digest_sent TEXT")
+    except Exception:
+        pass
     conn.commit()
     conn.close()
 
@@ -134,6 +176,154 @@ def inject_globals():
     sub_count = conn.execute("SELECT COUNT(*) FROM newsletter_subscribers").fetchone()[0]
     conn.close()
     return {"sub_count": sub_count}
+
+
+# ── Push notification helper ──────────────────────────────────────────────────
+def send_push_notification(subscription_json, title, body, url="/", icon=None):
+    """Send a single Web Push notification. Returns True/False/'expired'."""
+    if not VAPID_KEYS:
+        return False
+    try:
+        from pywebpush import webpush, WebPushException
+        sub = _json.loads(subscription_json) if isinstance(subscription_json, str) else subscription_json
+        payload = _json.dumps({
+            "title": title,
+            "body": body,
+            "url": url,
+            "icon": icon or "https://placehold.co/192x192/14b8a6/0d1117?text=🥷",
+        })
+        webpush(
+            subscription_info=sub,
+            data=payload,
+            vapid_private_key=VAPID_KEYS["private_pem"],
+            vapid_claims={"sub": f"mailto:{ADMIN_EMAIL}"},
+        )
+        return True
+    except Exception as exc:
+        # 410 Gone = subscription expired/unsubscribed
+        resp = getattr(getattr(exc, "response", None), "status_code", None)
+        if resp == 410:
+            return "expired"
+        print(f"[PUSH] Failed: {exc}")
+        return False
+
+
+# ── Auto login digest (email + push) ─────────────────────────────────────────
+def send_login_digest(user_id, user_email, username):
+    """Fire-and-forget: send trending digest email + push on login (max once/day)."""
+    def _work():
+        with app.app_context():
+            conn = get_db()
+            row  = conn.execute("SELECT last_digest_sent FROM users WHERE id = ?", (user_id,)).fetchone()
+            conn.close()
+            if row and row["last_digest_sent"]:
+                try:
+                    last_sent = datetime.fromisoformat(row["last_digest_sent"])
+                    if datetime.utcnow() - last_sent < timedelta(hours=23):
+                        return  # already sent recently
+                except Exception:
+                    pass
+
+            conn    = get_db()
+            top     = conn.execute(
+                "SELECT url, title FROM article_clicks ORDER BY click_count DESC LIMIT 5"
+            ).fetchall()
+            sub_row = conn.execute(
+                "SELECT subscription_json FROM push_subscriptions WHERE user_id = ?", (user_id,)
+            ).fetchone()
+            conn.close()
+
+            # ── Push notification ──────────────────────────────────────────
+            if sub_row and top:
+                top_title = top[0]["title"] or "Trending now on Newsbotninja"
+                result = send_push_notification(
+                    sub_row["subscription_json"],
+                    "🔥 Trending on Newsbotninja",
+                    top_title,
+                    url=top[0]["url"] or "/",
+                )
+                if result == "expired":
+                    conn = get_db()
+                    conn.execute("DELETE FROM push_subscriptions WHERE user_id = ?", (user_id,))
+                    conn.commit()
+                    conn.close()
+
+            # ── Email digest ───────────────────────────────────────────────
+            if not top:
+                return  # nothing to send yet
+            if not app.config.get("MAIL_USERNAME") or not app.config.get("MAIL_PASSWORD"):
+                # Mark sent so we don't retry on every login when mail isn't configured
+                _mark_digest_sent(user_id)
+                return
+
+            items_html = ""
+            for i, a in enumerate(top, 1):
+                t = a["title"] or "Untitled"
+                u = a["url"] or "#"
+                items_html += f"""
+                <tr>
+                  <td style="padding:14px 0;border-bottom:1px solid #1e2d45;">
+                    <p style="color:#64748b;font-size:11px;margin:0 0 4px;">{i}.</p>
+                    <a href="{u}" style="color:#14b8a6;font-size:15px;font-weight:600;
+                       text-decoration:none;line-height:1.4;">{t}</a>
+                  </td>
+                </tr>"""
+
+            html_body = f"""<!DOCTYPE html>
+<html><head><meta charset="UTF-8"></head>
+<body style="margin:0;padding:0;background:#0d1117;
+             font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#0d1117;padding:40px 20px;">
+    <tr><td align="center">
+      <table width="600" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%;">
+        <tr>
+          <td style="background:linear-gradient(135deg,#0f1923,#0a2436);padding:32px;
+                     border-radius:12px 12px 0 0;text-align:center;border-bottom:2px solid #14b8a6;">
+            <h1 style="color:#14b8a6;margin:0;font-size:28px;">🥷 Newsbotninja</h1>
+            <p style="color:#64748b;margin:8px 0 0;font-size:14px;">Your daily trending digest</p>
+          </td>
+        </tr>
+        <tr>
+          <td style="background:#0f1923;padding:32px;border-radius:0 0 12px 12px;">
+            <h2 style="color:#f1f5f9;margin:0 0 24px;font-size:18px;">🔥 Trending Now, {username}!</h2>
+            <table width="100%" cellpadding="0" cellspacing="0">{items_html}</table>
+            <div style="text-align:center;margin-top:32px;">
+              <a href="https://newsbotninja.onrender.com"
+                 style="background:#14b8a6;color:#0d1117;padding:14px 32px;border-radius:50px;
+                        text-decoration:none;font-weight:700;font-size:14px;display:inline-block;">
+                Read All Stories →
+              </a>
+            </div>
+          </td>
+        </tr>
+      </table>
+    </td></tr>
+  </table>
+</body></html>"""
+
+            try:
+                msg = Message(
+                    subject="🔥 Trending on Newsbotninja — your daily digest",
+                    recipients=[user_email],
+                    html=html_body,
+                )
+                mail.send(msg)
+                print(f"[DIGEST] Sent to {user_email}")
+            except Exception as exc:
+                print(f"[DIGEST] Email failed for {user_email}: {exc}")
+
+            _mark_digest_sent(user_id)
+
+    t = threading.Thread(target=_work, daemon=True)
+    t.start()
+
+
+def _mark_digest_sent(user_id):
+    conn = get_db()
+    conn.execute("UPDATE users SET last_digest_sent = ? WHERE id = ?",
+                 (datetime.utcnow().isoformat(), user_id))
+    conn.commit()
+    conn.close()
 
 
 # ── Mail helper ───────────────────────────────────────────────────────────────
@@ -364,6 +554,9 @@ def register():
         user = User(user_id, username, email, is_admin)
         login_user(user)
 
+        # Auto-send trending digest on first login
+        send_login_digest(user_id, email, username)
+
         # Notify admin (skip if registrant IS admin)
         if not is_admin:
             send_admin_notification(username, email)
@@ -390,6 +583,8 @@ def login():
         if row and check_password_hash(row["password_hash"], password):
             user = User(row["id"], row["username"], row["email"], row["is_admin"])
             login_user(user, remember=True)
+            # Auto-send trending digest (email + push) — throttled to once/day
+            send_login_digest(user.id, user.email, user.username)
             flash(f"Welcome back, {user.username}!", "success")
             next_page = request.args.get("next")
             return redirect(next_page or url_for("index"))
@@ -719,10 +914,12 @@ def admin():
     user_count  = conn.execute("SELECT COUNT(*) FROM users").fetchone()[0]
     sub_count_v = conn.execute("SELECT COUNT(*) FROM newsletter_subscribers").fetchone()[0]
     cmt_count   = conn.execute("SELECT COUNT(*) FROM comments").fetchone()[0]
+    push_count  = conn.execute("SELECT COUNT(*) FROM push_subscriptions").fetchone()[0]
     conn.close()
     return render_template("admin.html", tab="users",
                            users=users, user_count=user_count,
                            subscriber_count=sub_count_v, comment_count=cmt_count,
+                           push_count=push_count,
                            comments=[], subscribers=[])
 
 
@@ -738,10 +935,12 @@ def admin_comments():
     cmt_count  = conn.execute("SELECT COUNT(*) FROM comments").fetchone()[0]
     sub_count_v= conn.execute("SELECT COUNT(*) FROM newsletter_subscribers").fetchone()[0]
     user_count = conn.execute("SELECT COUNT(*) FROM users").fetchone()[0]
+    push_count = conn.execute("SELECT COUNT(*) FROM push_subscriptions").fetchone()[0]
     conn.close()
     return render_template("admin.html", tab="comments",
                            comments=comments, comment_count=cmt_count,
                            subscriber_count=sub_count_v, user_count=user_count,
+                           push_count=push_count,
                            users=[], subscribers=[])
 
 
@@ -768,33 +967,114 @@ def admin_newsletter():
     sub_count_v = conn.execute("SELECT COUNT(*) FROM newsletter_subscribers").fetchone()[0]
     cmt_count   = conn.execute("SELECT COUNT(*) FROM comments").fetchone()[0]
     user_count  = conn.execute("SELECT COUNT(*) FROM users").fetchone()[0]
+    push_count  = conn.execute("SELECT COUNT(*) FROM push_subscriptions").fetchone()[0]
     conn.close()
     return render_template("admin.html", tab="newsletter",
                            subscribers=subscribers, subscriber_count=sub_count_v,
                            comment_count=cmt_count, user_count=user_count,
+                           push_count=push_count,
                            users=[], comments=[])
 
 
-@app.route("/admin/newsletter/send", methods=["POST"])
+@app.route("/admin/push")
 @login_required
 @admin_required
-def admin_newsletter_send():
-    conn     = get_db()
-    top_rows = conn.execute(
-        "SELECT url, title FROM article_clicks ORDER BY click_count DESC LIMIT 5"
-    ).fetchall()
+def admin_push():
+    conn       = get_db()
+    push_subs  = conn.execute("""
+        SELECT ps.id, ps.user_id, u.username, u.email, ps.updated_at
+        FROM push_subscriptions ps
+        LEFT JOIN users u ON u.id = ps.user_id
+        ORDER BY ps.updated_at DESC
+    """).fetchall()
+    push_count  = conn.execute("SELECT COUNT(*) FROM push_subscriptions").fetchone()[0]
+    sub_count_v = conn.execute("SELECT COUNT(*) FROM newsletter_subscribers").fetchone()[0]
+    cmt_count   = conn.execute("SELECT COUNT(*) FROM comments").fetchone()[0]
+    user_count  = conn.execute("SELECT COUNT(*) FROM users").fetchone()[0]
     conn.close()
-    if not top_rows:
-        flash("No trending articles tracked yet — readers need to click some stories first!", "error")
-        return redirect(url_for("admin_newsletter"))
-    articles = [{"title": r["title"], "url": r["url"],
-                 "description": "", "source": {"name": ""}} for r in top_rows]
-    sent, err = send_newsletter_digest(articles)
-    if err:
-        flash(f"Failed: {err}", "error")
-    else:
-        flash(f"✅ Digest sent to {sent} subscriber{'s' if sent != 1 else ''}!", "success")
-    return redirect(url_for("admin_newsletter"))
+    return render_template("admin.html", tab="push",
+                           push_subs=push_subs, push_count=push_count,
+                           subscriber_count=sub_count_v, comment_count=cmt_count,
+                           user_count=user_count, users=[], comments=[], subscribers=[])
+
+
+# ── Web Push routes ───────────────────────────────────────────────────────────
+@app.route("/sw.js")
+def service_worker():
+    from flask import make_response, send_from_directory
+    resp = make_response(send_from_directory(
+        os.path.join(os.path.dirname(__file__), "static"), "sw.js"
+    ))
+    resp.headers["Service-Worker-Allowed"] = "/"
+    resp.headers["Content-Type"] = "application/javascript"
+    resp.headers["Cache-Control"] = "no-cache"
+    return resp
+
+
+@app.route("/api/push/vapid-public-key")
+def push_vapid_key():
+    if not VAPID_KEYS:
+        return jsonify({"error": "Push not configured"}), 503
+    return jsonify({"public_key": VAPID_KEYS["public_key"]})
+
+
+@app.route("/api/push/subscribe", methods=["POST"])
+@login_required
+def push_subscribe():
+    data = request.get_json(silent=True) or {}
+    if not data.get("endpoint"):
+        return jsonify({"error": "Invalid subscription"}), 400
+
+    sub_json = _json.dumps(data)
+    conn = get_db()
+    conn.execute("""
+        INSERT INTO push_subscriptions (user_id, subscription_json, updated_at)
+        VALUES (?, ?, datetime('now'))
+        ON CONFLICT(user_id) DO UPDATE SET
+            subscription_json = excluded.subscription_json,
+            updated_at        = datetime('now')
+    """, (current_user.id, sub_json))
+    conn.commit()
+    conn.close()
+
+    # Send a welcome push if this is a fresh session (flag in Flask session)
+    from flask import session
+    if not session.get("push_welcomed"):
+        session["push_welcomed"] = True
+        conn = get_db()
+        top = conn.execute(
+            "SELECT url, title FROM article_clicks ORDER BY click_count DESC LIMIT 1"
+        ).fetchone()
+        conn.close()
+        if top:
+            threading.Thread(
+                target=send_push_notification,
+                args=(sub_json, "🔥 Trending on Newsbotninja",
+                      top["title"] or "Check out today's top stories",
+                      top["url"] or "/"),
+                daemon=True,
+            ).start()
+        else:
+            threading.Thread(
+                target=send_push_notification,
+                args=(sub_json, "🥷 Newsbotninja",
+                      f"Welcome back, {current_user.username}! You're all set for live news alerts."),
+                daemon=True,
+            ).start()
+
+    return jsonify({"ok": True})
+
+
+@app.route("/api/push/unsubscribe", methods=["POST"])
+@login_required
+def push_unsubscribe():
+    conn = get_db()
+    conn.execute("DELETE FROM push_subscriptions WHERE user_id = ?", (current_user.id,))
+    conn.commit()
+    conn.close()
+    from flask import session
+    session.pop("push_welcomed", None)
+    return jsonify({"ok": True})
 
 
 # ── Demo download ─────────────────────────────────────────────────────────────

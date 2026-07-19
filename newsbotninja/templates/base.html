@@ -52,6 +52,8 @@
           {% if current_user.is_admin %}
             <a href="/admin" class="auth-link auth-link--admin" title="Admin Panel">⚙️ Admin</a>
           {% endif %}
+          <button class="bell-btn" id="bellBtn" title="Enable push notifications"
+                  style="display:none" onclick="requestPushPermission()">🔔</button>
           <span class="auth-user">👤 {{ current_user.username }}</span>
           <a href="/logout" class="auth-link auth-link--logout">Logout</a>
         {% else %}
@@ -143,5 +145,74 @@
   </script>
 
   {% block scripts %}{% endblock %}
+
+  {% if current_user.is_authenticated %}
+  <script>
+  // ── Web Push Setup ─────────────────────────────────────────────────────────
+  function urlBase64ToUint8Array(b64) {
+    const pad  = '='.repeat((4 - b64.length % 4) % 4);
+    const raw  = atob((b64 + pad).replace(/-/g, '+').replace(/_/g, '/'));
+    return Uint8Array.from([...raw].map(c => c.charCodeAt(0)));
+  }
+
+  async function subscribeToPush(reg) {
+    try {
+      const resp = await fetch('/api/push/vapid-public-key');
+      const { public_key } = await resp.json();
+      const sub = await reg.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: urlBase64ToUint8Array(public_key),
+      });
+      await fetch('/api/push/subscribe', {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify(sub.toJSON()),
+      });
+      document.getElementById('bellBtn').style.display = 'none';
+    } catch (e) {
+      console.warn('[Push] Subscribe failed:', e);
+    }
+  }
+
+  async function requestPushPermission() {
+    const perm = await Notification.requestPermission();
+    if (perm !== 'granted') { showToast('Notifications blocked. Check browser settings.'); return; }
+    const reg = await navigator.serviceWorker.ready;
+    await subscribeToPush(reg);
+    showToast('🔔 Notifications enabled!');
+  }
+
+  async function initPush() {
+    if (!('serviceWorker' in navigator) || !('PushManager' in window)) return;
+    try {
+      const reg = await navigator.serviceWorker.register('/sw.js', { scope: '/' });
+      await navigator.serviceWorker.ready;
+      const perm = Notification.permission;
+      if (perm === 'granted') {
+        // Already allowed — subscribe silently (or refresh existing sub)
+        const existing = await reg.pushManager.getSubscription();
+        if (existing) {
+          // Refresh subscription on server
+          await fetch('/api/push/subscribe', {
+            method:  'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body:    JSON.stringify(existing.toJSON()),
+          });
+        } else {
+          await subscribeToPush(reg);
+        }
+      } else if (perm === 'default') {
+        // Show bell button — user opts in manually
+        document.getElementById('bellBtn').style.display = 'inline-flex';
+      }
+      // perm === 'denied' → hide bell, do nothing
+    } catch (e) {
+      console.warn('[Push] Init failed:', e);
+    }
+  }
+
+  initPush();
+  </script>
+  {% endif %}
 </body>
 </html>

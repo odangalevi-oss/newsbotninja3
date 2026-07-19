@@ -27,6 +27,10 @@
         <span class="stat-value">{{ subscriber_count }}</span>
         <span class="stat-label">📨 Subscribers</span>
       </div>
+      <div class="stat-card">
+        <span class="stat-value">{{ push_count }}</span>
+        <span class="stat-label">🔔 Push Subs</span>
+      </div>
     </div>
 
     <!-- Tab nav -->
@@ -34,6 +38,7 @@
       <a href="/admin"              class="admin-tab {% if tab == 'users'      %}active{% endif %}">👥 Users</a>
       <a href="/admin/comments"     class="admin-tab {% if tab == 'comments'   %}active{% endif %}">💬 Comments</a>
       <a href="/admin/newsletter"   class="admin-tab {% if tab == 'newsletter' %}active{% endif %}">📨 Newsletter</a>
+      <a href="/admin/push"         class="admin-tab {% if tab == 'push'       %}active{% endif %}">🔔 Push</a>
     </nav>
 
     <!-- ───── USERS TAB ───── -->
@@ -130,19 +135,14 @@
     <div class="newsletter-admin-actions">
       <div class="newsletter-send-card">
         <div>
-          <h3 class="newsletter-send-title">📤 Send Trending Digest</h3>
+          <h3 class="newsletter-send-title">✅ Auto Digest — Active</h3>
           <p class="newsletter-send-desc">
-            Sends the top 5 most-clicked articles to all
-            <strong>{{ subscriber_count }}</strong> subscriber{{ 's' if subscriber_count != 1 else '' }}.
+            Every user receives a trending digest email automatically when they log in
+            (at most once per 23 hours). No manual sending needed.<br>
+            <strong>{{ subscriber_count }}</strong> visitor{{ 's' if subscriber_count != 1 else '' }} also opted in via the subscribe bar.
           </p>
         </div>
-        <form method="POST" action="/admin/newsletter/send"
-              onsubmit="return confirm('Send digest to {{ subscriber_count }} subscriber(s) now?');">
-          <button type="submit" class="newsletter-send-btn"
-                  {% if subscriber_count == 0 %}disabled title="No subscribers yet"{% endif %}>
-            🚀 Send Digest Now
-          </button>
-        </form>
+        <span class="auto-digest-badge">🤖 Automatic</span>
       </div>
     </div>
 
@@ -169,7 +169,43 @@
             </td>
           </tr>
           {% else %}
-          <tr><td colspan="5" class="table-empty">No subscribers yet.</td></tr>
+          <tr><td colspan="5" class="table-empty">No bar-subscribers yet.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% endif %}
+
+    <!-- ───── PUSH TAB ───── -->
+    {% if tab == 'push' %}
+    <div class="newsletter-admin-actions">
+      <div class="newsletter-send-card">
+        <div>
+          <h3 class="newsletter-send-title">🔔 Web Push Notifications</h3>
+          <p class="newsletter-send-desc">
+            Users who allow notifications get an instant push with the top trending story every time they log in.
+            <strong>{{ push_count }}</strong> user{{ 's' if push_count != 1 else '' }} currently subscribed.
+          </p>
+        </div>
+        <span class="auto-digest-badge">🤖 Automatic</span>
+      </div>
+    </div>
+
+    <div class="admin-table-wrap" style="margin-top:24px;">
+      <table class="admin-table">
+        <thead>
+          <tr><th>#</th><th>Username</th><th>Email</th><th>Since</th></tr>
+        </thead>
+        <tbody>
+          {% for ps in push_subs %}
+          <tr>
+            <td class="td-id">{{ ps.id }}</td>
+            <td class="td-username">{{ ps.username or '—' }}</td>
+            <td class="td-email">{{ ps.email or '—' }}</td>
+            <td class="td-date">{{ ps.updated_at[:10] if ps.updated_at else '—' }}</td>
+          </tr>
+          {% else %}
+          <tr><td colspan="4" class="table-empty">No push subscribers yet.</td></tr>
           {% endfor %}
         </tbody>
       </table>
