@@ -68,7 +68,8 @@ BASE_URL     = "https://newsapi.org/v2"
 ADMIN_EMAIL  = "odangalevi@gmail.com"
 
 # ── SQLite DB ─────────────────────────────────────────────────────────────────
-DB_PATH = os.path.join(os.path.dirname(__file__), "users.db")
+# Set DB_PATH env var on Render to a persistent-disk path, e.g. /data/users.db
+DB_PATH = os.getenv("DB_PATH", os.path.join(os.path.dirname(__file__), "users.db"))
 
 def get_db():
     conn = sqlite3.connect(DB_PATH)

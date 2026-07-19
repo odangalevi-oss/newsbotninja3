@@ -1,7 +1,9 @@
-python-telegram-bot==21.6
 flask==3.0.3
+flask-login==0.6.3
+flask-mail==0.10.0
 requests==2.32.3
-gTTS==2.5.3
 Pillow==10.4.0
-flask-login
-flask-mail
+Werkzeug==3.1.8
+pywebpush==2.3.0
+py-vapid==1.9.4
+gunicorn==22.0.0

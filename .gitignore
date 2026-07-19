@@ -47,3 +47,7 @@ Thumbs.db
 # Replit
 .cache/
 .local/
+
+# Newsbotninja — never commit live databases or secrets to git
+newsbotninja/users.db
+newsbotninja/vapid_keys.json
